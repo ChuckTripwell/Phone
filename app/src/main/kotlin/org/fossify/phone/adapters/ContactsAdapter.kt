@@ -447,18 +447,21 @@ class ContactsAdapter(
         try {
             val set = ConstraintSet()
             set.clone(binding.itemContactFrame)
+            val gap = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
             if (isFavorite) {
                 set.connect(binding.dragHandleIcon.id, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
                 set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
-                set.connect(binding.itemContactImage.id, ConstraintSet.START, binding.dragHandleIcon.id, ConstraintSet.END, 0)
-                set.connect(R.id.contact_star_button, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 0)
+                set.connect(R.id.contact_star_button, ConstraintSet.START, binding.dragHandleIcon.id, ConstraintSet.END, gap)
             } else {
                 set.clear(binding.dragHandleIcon.id, ConstraintSet.START)
                 set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
-                set.connect(binding.itemContactImage.id, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-                set.connect(R.id.contact_star_button, ConstraintSet.END, binding.dragHandleIcon.id, ConstraintSet.START, activity.resources.getDimensionPixelSize(R.dimen.small_margin))
+                set.connect(R.id.contact_star_button, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
             }
-            set.connect(R.id.contact_call_button, ConstraintSet.END, R.id.contact_star_button, ConstraintSet.START, activity.resources.getDimensionPixelSize(R.dimen.small_margin))
+            set.clear(R.id.contact_star_button, ConstraintSet.END)
+            set.connect(binding.itemContactImage.id, ConstraintSet.START, R.id.contact_star_button, ConstraintSet.END, gap)
+            set.connect(R.id.contact_call_button, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, gap)
+            set.clear(R.id.contact_call_button, ConstraintSet.START)
+            set.connect(binding.itemContactName.id, ConstraintSet.END, R.id.contact_call_button, ConstraintSet.START, gap)
             set.applyTo(binding.itemContactFrame)
         } catch (ignored: Exception) {
         }
@@ -496,22 +499,11 @@ class ContactsAdapter(
 
                 val size = activity.resources.getDimensionPixelSize(R.dimen.call_button_size)
                 layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    endToStart = R.id.contact_star_button
                     topToTop = ConstraintSet.PARENT_ID
                     bottomToBottom = ConstraintSet.PARENT_ID
-                    marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-                    goneEndMargin = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
             }
             binding.itemContactFrame.addView(callButton)
-
-            try {
-                val set = ConstraintSet()
-                set.clone(binding.itemContactFrame)
-                set.connect(R.id.item_contact_name, ConstraintSet.END, R.id.contact_call_button, ConstraintSet.START)
-                set.applyTo(binding.itemContactFrame)
-            } catch (ignored: Exception) {
-            }
         }
 
         callButton.setOnClickListener {
@@ -537,13 +529,10 @@ class ContactsAdapter(
                 setPadding(padding, padding, padding, padding)
                 scaleType = ImageView.ScaleType.FIT_CENTER
 
-                val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
+                val size = activity.resources.getDimensionPixelSize(R.dimen.star_button_size)
                 layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    endToStart = R.id.drag_handle_icon
                     topToTop = ConstraintSet.PARENT_ID
                     bottomToBottom = ConstraintSet.PARENT_ID
-                    marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-                    goneEndMargin = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
             }
             binding.itemContactFrame.addView(starButton)

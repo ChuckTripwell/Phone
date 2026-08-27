@@ -14,4 +14,7 @@
     <color name="call_green_ripple">#664CAF50</color>
 
     <color name="contacts_separator">#99FFFFFF</color>
+
+    <!-- permanent text-color fix: dark mode => white text (see values/colors.xml) -->
+    <color name="default_text_color">#FFFFFFFF</color>
 </resources>

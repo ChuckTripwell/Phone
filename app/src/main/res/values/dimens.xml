@@ -14,7 +14,9 @@
 
     <!-- keeps the (now square) favorites call buttons visually consistent -->
     <dimen name="call_button_corner_radius">8dp</dimen>
-    <dimen name="call_button_size">66dp</dimen>
+    <!-- shrunk + condensed action buttons -->
+    <dimen name="call_button_size">44dp</dimen>
+    <dimen name="star_button_size">40dp</dimen>
 
     <!-- make contact face-icons bigger and square everywhere (overrides commons) -->
     <dimen name="list_icon_size_medium">52dp</dimen>

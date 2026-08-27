@@ -15,4 +15,9 @@
     <color name="call_green_ripple">#664CAF50</color>
 
     <color name="contacts_separator">#99000000</color>
+
+    <!-- permanent text-color fix: light mode => black text, dark mode => white text.
+         (commons pins default_text_color to the dark variant for all modes, making
+         English text invisible on light backgrounds; this override restores it) -->
+    <color name="default_text_color">#FF000000</color>
 </resources>
