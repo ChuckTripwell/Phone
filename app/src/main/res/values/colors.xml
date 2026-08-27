@@ -4,4 +4,13 @@
     <color name="color_missed_call">@color/md_red_500_dark</color>
     <color name="color_outgoing_call">@color/md_green_600</color>
     <color name="color_incoming_call">@color/md_blue_600</color>
+
+    <color name="color_primary">#9C27B0</color>
+    <color name="color_primary_dark">#7B1FA2</color>
+    <color name="color_accent">#E040FB</color>
+    <color name="color_primary_light">#CE93D8</color>
+
+    <color name="call_green_icon">#4CAF50</color>
+    <color name="call_green_bg">#A5D6A7</color>
+    <color name="call_green_ripple">#664CAF50</color>
 </resources>

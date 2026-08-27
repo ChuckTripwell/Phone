@@ -32,3 +32,45 @@ Download the Fossify Phone App now and step into a mobile world where privacy se
 <img alt="App image" src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_en-US.png" width="30%">
 <img alt="App image" src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_en-US.png" width="30%">
 </div>
+
+---
+
+## Building a Signed APK
+
+To build and release a signed APK via GitHub Actions, you need to configure the following repository secrets:
+
+### Required Secrets
+
+| Secret Name | Description | How to Obtain |
+|---|---|---|
+| `SIGNING_STORE_FILE` | Base64-encoded keystore file (`.jks` or `.keystore`) | Generate with `keytool -genkeypair -v -keystore release.keystore -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000`, then encode: `base64 -w 0 release.keystore > keystore_base64.txt` |
+| `SIGNING_STORE_PASSWORD` | Keystore password | Set when generating the keystore with `keytool` |
+| `SIGNING_KEY_ALIAS` | Key alias name | Set with `-alias` flag when generating the keystore |
+| `SIGNING_KEY_PASSWORD` | Key password | Set with `-keypass` when generating the keystore |
+| `GH_TOKEN` | GitHub Personal Access Token (PAT) with `repo` scope | Generate at https://github.com/settings/tokens → Generate new token (classic) → Select `repo` scope |
+
+### Key Generation Method
+
+```bash
+# 1. Generate keystore
+keytool -genkeypair -v \
+  -keystore release.keystore \
+  -alias my-key-alias \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+
+# 2. Base64 encode the keystore for the GitHub secret
+base64 -w 0 release.keystore > keystore_base64.txt
+
+# 3. Copy the contents of keystore_base64.txt to the SIGNING_STORE_FILE secret
+# 4. Set SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, and SIGNING_KEY_PASSWORD secrets
+# 5. Generate a PAT at https://github.com/settings/tokens with repo scope for GH_TOKEN
+```
+
+### Setting Up Secrets in GitHub
+
+1. Go to your repository on GitHub
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret** for each secret listed above
+4. Add the name and value for each secret

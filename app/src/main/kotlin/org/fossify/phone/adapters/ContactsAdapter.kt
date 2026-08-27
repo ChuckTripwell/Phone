@@ -11,6 +11,8 @@ import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -58,7 +60,6 @@ class ContactsAdapter(
     private var startReorderDragListener: StartReorderDragListener? = null
     var onDragEndListener: (() -> Unit)? = null
     var onSpanCountListener: (Int) -> Unit = {}
-
 
     init {
         setupDragListener(true)
@@ -359,6 +360,10 @@ class ContactsAdapter(
         }
     }
 
+    private fun isFavoriteAtPosition(position: Int): Boolean {
+        return contacts.getOrNull(position)?.starred == 1
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
         binding.apply {
@@ -376,8 +381,12 @@ class ContactsAdapter(
                             holder.viewClicked(contact)
                         }
                     }
-                    setOnLongClickListener {
-                        holder.viewLongClicked()
+                    setOnLongClickListener { view ->
+                        if (contact.starred == 1) {
+                            startReorderDragListener?.requestDrag(holder)
+                        } else {
+                            holder.viewLongClicked()
+                        }
                         true
                     }
                 }
@@ -414,26 +423,60 @@ class ContactsAdapter(
                 }
             }
 
-            if (enableDrag && textToHighlight.isEmpty()) {
-                dragHandleIcon.apply {
-                    beVisibleIf(selectedKeys.isNotEmpty())
-                    applyColorFilter(textColor)
-                    setOnTouchListener { _, event ->
-                        if (event.action == MotionEvent.ACTION_DOWN) {
-                            startReorderDragListener?.requestDrag(holder)
-                        }
-                        false
-                    }
-                }
-            } else {
-                dragHandleIcon.apply {
-                    beGone()
-                    setOnTouchListener(null)
-                }
+            dragHandleIcon.apply {
+                beGone()
+                setOnTouchListener(null)
             }
+
+            setupCallButton(binding, contact)
 
             if (!activity.isDestroyed) {
                 SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
+            }
+        }
+    }
+
+    private fun setupCallButton(binding: ItemViewBinding, contact: Contact) {
+        val existingButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_call_button)
+        if (existingButton == null) {
+            val callButton = ImageView(activity).apply {
+                id = R.id.contact_call_button
+                val drawable = ContextCompat.getDrawable(activity, R.drawable.ic_phone_green_call)
+                setImageDrawable(drawable)
+                background = ContextCompat.getDrawable(activity, R.drawable.circle_button_background_ripple)
+                val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                setPadding(padding, padding, padding, padding)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+
+                val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
+                layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
+                    endToEnd = ConstraintSet.PARENT_ID
+                    topToTop = ConstraintSet.PARENT_ID
+                    bottomToBottom = ConstraintSet.PARENT_ID
+                    marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                }
+
+                setOnClickListener {
+                    val number = contact.getPrimaryNumber()
+                    if (!number.isNullOrEmpty()) {
+                        activity.handlePermission(PERMISSION_CALL_PHONE) { hasPermission ->
+                            val action = if (hasPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
+                            val intent = Intent(action).apply {
+                                data = Uri.fromParts("tel", number, null)
+                            }
+                            activity.startActivity(intent)
+                        }
+                    }
+                }
+            }
+            binding.itemContactFrame.addView(callButton)
+
+            try {
+                val set = ConstraintSet()
+                set.clone(binding.itemContactFrame)
+                set.connect(R.id.item_contact_name, ConstraintSet.END, R.id.contact_call_button, ConstraintSet.START)
+                set.applyTo(binding.itemContactFrame)
+            } catch (ignored: Exception) {
             }
         }
     }

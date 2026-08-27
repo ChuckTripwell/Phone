@@ -1,0 +1,100 @@
+name: Build and Release Custom Patch APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - custom-patch
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync main branch
+        run: |
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+      - name: Checkout custom-patch branch
+        run: git checkout custom-patch
+
+      - name: Merge main into custom-patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git merge origin/main --no-edit || true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode keystore
+        if: ${{ env.SIGNING_STORE_FILE != '' }}
+        env:
+          SIGNING_STORE_FILE: ${{ secrets.SIGNING_STORE_FILE }}
+        run: |
+          echo "$SIGNING_STORE_FILE" | base64 -d > $RUNNER_TEMP/release.keystore
+
+      - name: Build fossRelease APK
+        env:
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_FILE: ${{ runner.temp }}/release.keystore
+        run: ./gradlew assembleFossRelease
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION_NAME=$(grep "VERSION_NAME" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          VERSION_CODE=$(grep "VERSION_CODE" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Find APK
+        id: find-apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/foss/release -name "*.apk" | head -1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}
+          name: "Custom Patch v${{ steps.version.outputs.version_name }}"
+          body: |
+            ## Custom Patch Release
+            
+            This is an automatically built release from the `custom-patch` branch.
+            
+            ### Changes from main:
+            - Merged favorites into contacts screen
+            - FAB changed to add-contact button
+            - Dialpad moved to bottom bar
+            - Green call button on contacts/favorites
+            - Bright violet color theme
+            - Black outline on calling screen text
+            - Hebrew font setting
+            - Long-press to reorder favorites
+            
+            ### Version: ${{ steps.version.outputs.version_name }} (build ${{ steps.version.outputs.version_code }})
+          files: ${{ steps.find-apk.outputs.apk_path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

@@ -30,7 +30,6 @@ import org.fossify.commons.helpers.ON_CLICK_CALL_CONTACT
 import org.fossify.commons.helpers.ON_CLICK_VIEW_CONTACT
 import org.fossify.commons.helpers.TAB_CALL_HISTORY
 import org.fossify.commons.helpers.TAB_CONTACTS
-import org.fossify.commons.helpers.TAB_FAVORITES
 import org.fossify.commons.helpers.TAB_LAST_USED
 import org.fossify.commons.helpers.isNougatPlus
 import org.fossify.commons.helpers.isQPlus
@@ -101,6 +100,7 @@ class SettingsActivity : SimpleActivity() {
         setupManageSpeedDial()
         setupChangeDateTimeFormat()
         setupFontSize()
+        setupHebrewFont()
         setupManageShownTabs()
         setupDefaultTab()
         setupOnContactClick()
@@ -229,6 +229,31 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
+    private fun setupHebrewFont() {
+        binding.settingsHebrewFont.text = getHebrewFontText()
+        binding.settingsHebrewFontHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(0, getString(R.string.font_default)),
+                RadioItem(1, getString(R.string.font_serif)),
+                RadioItem(2, getString(R.string.font_monospace))
+            )
+            val currentFont = config.hebrewFontType
+            RadioGroupDialog(this@SettingsActivity, items, currentFont) {
+                config.hebrewFontType = it as Int
+                binding.settingsHebrewFont.text = getHebrewFontText()
+            }
+        }
+    }
+
+    private fun getHebrewFontText(): String {
+        return when (config.hebrewFontType) {
+            0 -> getString(R.string.font_default)
+            1 -> getString(R.string.font_serif)
+            2 -> getString(R.string.font_monospace)
+            else -> getString(R.string.font_default)
+        }
+    }
+
     private fun setupManageShownTabs() {
         binding.settingsManageTabsHolder.setOnClickListener {
             ManageVisibleTabsDialog(this)
@@ -240,7 +265,6 @@ class SettingsActivity : SimpleActivity() {
         binding.settingsDefaultTabHolder.setOnClickListener {
             val items = arrayListOf(
                 RadioItem(TAB_CONTACTS, getString(R.string.contacts_tab)),
-                RadioItem(TAB_FAVORITES, getString(R.string.favorites_tab)),
                 RadioItem(TAB_CALL_HISTORY, getString(R.string.call_history_tab)),
                 RadioItem(TAB_LAST_USED, getString(R.string.last_used_tab))
             )
@@ -255,7 +279,6 @@ class SettingsActivity : SimpleActivity() {
     private fun getDefaultTabText() = getString(
         when (baseConfig.defaultTab) {
             TAB_CONTACTS -> R.string.contacts_tab
-            TAB_FAVORITES -> R.string.favorites_tab
             TAB_CALL_HISTORY -> R.string.call_history_tab
             else -> R.string.last_used_tab
         }
