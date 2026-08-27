@@ -27,8 +27,8 @@
 
         <org.fossify.commons.views.MyFloatingActionButton
             android:id="@+id/main_dialpad_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="@dimen/fab_custom_size"
+            android:layout_height="@dimen/fab_custom_size"
             android:layout_gravity="bottom|start"
             android:layout_marginStart="@dimen/fab_start_margin"
             android:layout_marginBottom="@dimen/fab_bottom_margin"

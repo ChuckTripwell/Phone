@@ -16,7 +16,7 @@
     <dimen name="call_button_corner_radius">8dp</dimen>
     <!-- shrunk + condensed action buttons -->
     <dimen name="call_button_size">44dp</dimen>
-    <dimen name="star_button_size">40dp</dimen>
+    <dimen name="star_button_size">44dp</dimen>
 
     <!-- make contact face-icons bigger and square everywhere (overrides commons) -->
     <dimen name="list_icon_size_medium">52dp</dimen>
@@ -27,6 +27,7 @@
     <!-- FAB positioning: inset from left edge past the fast scroller and raised above tabs -->
     <dimen name="fab_start_margin">76dp</dimen>
     <dimen name="fab_bottom_margin">24dp</dimen>
+    <dimen name="fab_custom_size">60dp</dimen>
 
     <dimen name="caller_name_text_size">34sp</dimen>
     <dimen name="call_status_text_size">20sp</dimen>

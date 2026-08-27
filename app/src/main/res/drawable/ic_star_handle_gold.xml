@@ -1,23 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="32dp"
-    android:height="32dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
-    <group
-        android:translateX="-1"
-        android:translateY="4">
-        <path
-            android:fillColor="#FFC107"
-            android:pathData="M12,17.27l4.15,2.51c0.76,0.46 1.69,-0.22 1.49,-1.08l-1.1,-4.72 3.67,-3.18c0.67,-0.58 0.31,-1.68 -0.57,-1.75l-4.83,-0.41 -1.89,-4.46c-0.34,-0.81 -1.5,-0.81 -1.84,0L9.19,8.63 4.36,9.04c-0.88,0.07 -1.24,1.17 -0.57,1.75l3.67,3.18 -1.1,4.72c-0.2,0.86 0.73,1.54 1.49,1.08l4.15,-2.5z" />
-    </group>
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
     <path
-        android:fillColor="#FF757575"
-        android:pathData="M23,11h1.8v10h-1.8z" />
-    <path
-        android:fillColor="#FF757575"
-        android:pathData="M26,11h1.8v10h-1.8z" />
-    <path
-        android:fillColor="#FF757575"
-        android:pathData="M29,11h1.8v10h-1.8z" />
+        android:fillColor="#FFC107"
+        android:pathData="M200 600q-17 0-28.5-11.5T160 560q0-17 11.5-28.5T200 520h560q17 0 28.5 11.5T800 560q0 17-11.5 28.5T760 600H200zM200 440q-17 0-28.5-11.5T160 400q0-17 11.5-28.5T200 360h560q17 0 28.5 11.5T800 400q0 17-11.5 28.5T760 440H200z" />
 </vector>
