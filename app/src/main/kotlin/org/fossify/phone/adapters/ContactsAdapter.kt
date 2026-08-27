@@ -554,30 +554,24 @@ class ContactsAdapter(
             )
         )
 
-        val detector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDown(e: MotionEvent): Boolean = true
-
-            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                if (!actModeCallback.isSelectable) {
-                    val helper = ContactsHelper(activity)
-                    if (contact.starred == 1) {
-                        helper.removeFavorites(arrayListOf(contact))
-                    } else {
-                        helper.addFavorites(arrayListOf(contact))
-                    }
-                    refreshItemsListener?.refreshItems()
-                }
-                return true
-            }
-
-            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (contact.starred == 1 && !actModeCallback.isSelectable) {
+        val isFavorite = contact.starred == 1
+        if (isFavorite) {
+            starButton.setOnClickListener(null)
+            starButton.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
                     startReorderDragListener?.requestDrag(holder)
                 }
-                return false
+                false
             }
-        })
-        starButton.setOnTouchListener { _, event -> detector.onTouchEvent(event) }
+        } else {
+            starButton.setOnTouchListener(null)
+            starButton.setOnClickListener {
+                if (!actModeCallback.isSelectable) {
+                    ContactsHelper(activity).addFavorites(arrayListOf(contact))
+                    refreshItemsListener?.refreshItems()
+                }
+            }
+        }
     }
 
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
