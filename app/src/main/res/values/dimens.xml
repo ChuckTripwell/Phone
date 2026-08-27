@@ -16,13 +16,13 @@
     <dimen name="call_button_corner_radius">8dp</dimen>
     <!-- shrunk + condensed action buttons -->
     <dimen name="call_button_size">44dp</dimen>
-    <dimen name="star_button_size">44dp</dimen>
+    <dimen name="star_button_size">72dp</dimen>
 
     <!-- make contact face-icons bigger and square everywhere (overrides commons) -->
     <dimen name="list_icon_size_medium">52dp</dimen>
 
     <!-- clears the fast-scroller on the left so list items don't sit under the letters -->
-    <dimen name="contacts_list_start_padding">44dp</dimen>
+    <dimen name="contacts_list_start_padding">32dp</dimen>
 
     <!-- FAB positioning: inset from left edge past the fast scroller and raised above tabs -->
     <dimen name="fab_start_margin">76dp</dimen>

@@ -5,7 +5,7 @@
     <RelativeLayout
         android:id="@+id/fragment_wrapper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
 
         <org.fossify.commons.views.MyTextView
             android:id="@+id/fragment_placeholder"
@@ -49,7 +49,7 @@
         <com.reddit.indicatorfastscroll.FastScrollerView
             android:id="@+id/letter_fastscroller"
             android:layout_width="32dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_alignParentStart="true"
             android:paddingTop="@dimen/big_margin"
             android:paddingBottom="@dimen/big_margin"

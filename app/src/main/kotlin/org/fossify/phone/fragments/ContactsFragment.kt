@@ -110,11 +110,9 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             val favorites = rawContacts.filter { it.starred == 1 } as ArrayList<Contact>
             val regularContacts = rawContacts.filter { it.starred != 1 } as ArrayList<Contact>
 
-            val sortedFavorites = if (activity!!.config.isCustomOrderSelected) {
-                sortByCustomOrder(favorites)
-            } else {
-                favorites
-            }
+            // Favorites are always ordered by their drag-reorder order; the "sort by"
+            // control must never reorder them.
+            val sortedFavorites = sortByCustomOrder(favorites)
 
             favoritesCount = sortedFavorites.size
 
@@ -192,7 +190,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     private fun sortByCustomOrder(favorites: List<Contact>): ArrayList<Contact> {
         val favoritesOrder = activity!!.config.favoritesContactsOrder
         if (favoritesOrder.isEmpty()) {
-            return ArrayList(favorites)
+            return ArrayList(favorites.sortedBy { it.getNameToDisplay() })
         }
         val orderList = Converters().jsonToStringList(favoritesOrder)
         val map = orderList.withIndex().associate { it.value to it.index }
