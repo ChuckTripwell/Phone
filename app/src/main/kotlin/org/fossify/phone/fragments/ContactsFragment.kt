@@ -2,6 +2,7 @@ package org.fossify.phone.fragments
 
 import android.content.Context
 import android.util.AttributeSet
+import androidx.core.content.ContextCompat
 import com.google.gson.Gson
 import org.fossify.commons.adapters.MyRecyclerViewAdapter
 import org.fossify.commons.extensions.areSystemAnimationsEnabled
@@ -26,6 +27,7 @@ import org.fossify.phone.R
 import org.fossify.phone.activities.MainActivity
 import org.fossify.phone.activities.SimpleActivity
 import org.fossify.phone.adapters.ContactsAdapter
+import org.fossify.phone.adapters.ContactsSectionDecoration
 import org.fossify.phone.databinding.FragmentContactsBinding
 import org.fossify.phone.databinding.FragmentLettersLayoutBinding
 import org.fossify.phone.extensions.config
@@ -158,6 +160,14 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                     }
                 ).apply {
                     binding.fragmentList.adapter = this
+                    val adapterRef = this
+
+                    binding.fragmentList.addItemDecoration(
+                        ContactsSectionDecoration(
+                            contactsProvider = { adapterRef.contacts },
+                            dividerColor = ContextCompat.getColor(context, R.color.contacts_separator)
+                        )
+                    )
 
                     onDragEndListener = {
                         val adapter = binding.fragmentList.adapter
@@ -200,7 +210,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     private fun setupLetterFastScroller(contacts: List<Contact>) {
-        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = true)
     }
 
     override fun onSearchClosed() {

@@ -62,7 +62,7 @@ class ContactsAdapter(
     var onSpanCountListener: (Int) -> Unit = {}
 
     init {
-        setupDragListener(true)
+        setupDragListener(false)
 
         if (recyclerView.layoutManager is GridLayoutManager) {
             setupZoomListener(this)

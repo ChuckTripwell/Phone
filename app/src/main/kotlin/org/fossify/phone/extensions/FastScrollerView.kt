@@ -8,9 +8,14 @@ import org.fossify.commons.models.contacts.Contact
 fun FastScrollerView.setupWithContacts(
     recyclerView: RecyclerView,
     contacts: List<Contact>,
+    useStarForFavorites: Boolean = false,
 ) = setupWithRecyclerView(recyclerView, { position ->
     val initialLetter = try {
-        contacts[position].getFirstLetter()
+        if (useStarForFavorites && contacts[position].starred == 1) {
+            "*"
+        } else {
+            contacts[position].getFirstLetter()
+        }
     } catch (e: IndexOutOfBoundsException) {
         ""
     }
