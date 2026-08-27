@@ -21,32 +21,29 @@ class ContactsSectionDecoration(
     override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
         super.onDrawOver(c, parent, state)
         val contacts = contactsProvider()
-        var foundFavorite = false
-        var foundFavoritesEnd = false
+        val firstRegular = contacts.indexOfFirst { it.starred != 1 }
+        if (firstRegular <= 0) return
 
         for (i in 0 until parent.childCount) {
             val child = parent.getChildAt(i)
             val position = parent.getChildAdapterPosition(child)
-            if (position == RecyclerView.NO_POSITION) continue
+            if (position == NO_POSITION) continue
+            // The separator sits at the top of the first non-favorite row.
+            if (position != firstRegular) continue
 
-            val contact = contacts.getOrNull(position) ?: continue
-            if (contact.starred == 1) {
-                foundFavorite = true
-            } else if (!foundFavoritesEnd && foundFavorite) {
-                foundFavoritesEnd = true
-                val dividerY = child.top.toFloat() - child.translationY
-                c.drawRect(
-                    parent.paddingLeft.toFloat() + 0f,
-                    dividerY - dividerHeight,
-                    parent.width.toFloat() - parent.paddingRight,
-                    dividerY,
-                    paint
-                )
-            }
+            val dividerY = child.top.toFloat() - child.translationY
+            c.drawRect(
+                parent.paddingLeft.toFloat(),
+                dividerY - dividerHeight,
+                parent.width.toFloat() - parent.paddingRight,
+                dividerY,
+                paint
+            )
         }
     }
 
     companion object {
+        private const val NO_POSITION = -1
         private const val DEFAULT_COLOR = 0x33000000
     }
 }

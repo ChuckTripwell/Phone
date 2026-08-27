@@ -424,7 +424,7 @@ class MainActivity : SimpleActivity() {
             }
         )
 
-        binding.mainTabsHolder.beGoneIf(binding.mainTabsHolder.tabCount == 1)
+        binding.mainTabsHolder.beGoneIf(binding.mainTabsHolder.tabCount == 0)
         storedShowTabs = config.showTabs
         storedStartNameWithSurname = config.startNameWithSurname
     }

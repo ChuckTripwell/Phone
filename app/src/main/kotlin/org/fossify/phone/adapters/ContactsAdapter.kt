@@ -387,7 +387,13 @@ class ContactsAdapter(
             }
 
             itemContactName.apply {
-                setTextColor(textColor)
+                setTextColor(
+                    if (contact.starred == 1) {
+                        ContextCompat.getColor(activity, R.color.favorite_name_gold)
+                    } else {
+                        textColor
+                    }
+                )
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
 
                 val name = contact.getNameToDisplay()
@@ -421,12 +427,25 @@ class ContactsAdapter(
                 if (contact.starred == 1) {
                     beVisible()
                     setColorFilter(activity.getProperTextColor())
-                    setOnTouchListener { _, event ->
-                        if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
-                            startReorderDragListener?.requestDrag(holder)
+                    val detector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
+                        override fun onDown(e: MotionEvent): Boolean = true
+
+                        override fun onSingleTapUp(e: MotionEvent): Boolean {
+                            if (!actModeCallback.isSelectable) {
+                                ContactsHelper(activity).removeFavorites(arrayListOf(contact))
+                                refreshItemsListener?.refreshItems()
+                            }
+                            return true
                         }
-                        false
-                    }
+
+                        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+                            if (!actModeCallback.isSelectable) {
+                                startReorderDragListener?.requestDrag(holder)
+                            }
+                            return false
+                        }
+                    })
+                    setOnTouchListener { _, event -> detector.onTouchEvent(event) }
                 } else {
                     beGone()
                     setOnTouchListener(null)
