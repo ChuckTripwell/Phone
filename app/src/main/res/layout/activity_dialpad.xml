@@ -136,8 +136,7 @@
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/dialpad_bottom_bar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="@dimen/bottom_nav_min_height"
+            android:layout_height="@dimen/bottom_nav_min_height"
             app:layout_constraintBottom_toBottomOf="parent"
             app:tabIndicator="@null"
             app:tabMinWidth="150dp"

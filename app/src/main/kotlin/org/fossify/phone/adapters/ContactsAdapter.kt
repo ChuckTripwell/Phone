@@ -128,7 +128,7 @@ class ContactsAdapter(
 
     override fun getSelectableItemCount() = contacts.size
 
-    override fun getIsItemSelectable(position: Int) = true
+    override fun getIsItemSelectable(position: Int) = contacts.getOrNull(position)?.starred != 1
 
     override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
 
