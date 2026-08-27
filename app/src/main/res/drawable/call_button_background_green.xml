@@ -2,8 +2,9 @@
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="?attr/colorControlHighlight">
     <item>
-        <shape android:shape="oval">
+        <shape android:shape="rectangle">
             <solid android:color="@color/call_green_bg" />
+            <corners android:radius="@dimen/call_button_corner_radius" />
         </shape>
     </item>
 </ripple>

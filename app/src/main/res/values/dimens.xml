@@ -12,6 +12,13 @@
     <dimen name="call_control_button_size">72dp</dimen>
     <dimen name="recyclerview_fab_padding">100dp</dimen>
 
+    <!-- keeps the (now square) favorites call buttons visually consistent -->
+    <dimen name="call_button_corner_radius">8dp</dimen>
+    <dimen name="call_button_size">66dp</dimen>
+
+    <!-- make contact face-icons bigger and square everywhere (overrides commons) -->
+    <dimen name="list_icon_size_medium">52dp</dimen>
+
     <!-- clears the fast-scroller on the left so list items don't sit under the letters -->
     <dimen name="contacts_list_start_padding">44dp</dimen>
 
@@ -25,4 +32,10 @@
     <!-- keep these 2 values in dp to avoid scaling -->
     <dimen name="dialpad_text_size">28dp</dimen>
     <dimen name="dialpad_letters_text_size">12dp</dimen>
+
+    <!-- fast scroller letter size (shrunk so they fit on narrow screens) -->
+    <dimen name="fast_scroller_letter_size">9sp</dimen>
+
+    <!-- bottom nav bars share an explicit height so dialer matches main -->
+    <dimen name="bottom_nav_min_height">60dp</dimen>
 </resources>

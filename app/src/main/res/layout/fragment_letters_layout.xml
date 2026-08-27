@@ -52,7 +52,8 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:paddingTop="@dimen/big_margin"
-            android:paddingBottom="@dimen/big_margin" />
+            android:paddingBottom="@dimen/big_margin"
+            android:textAppearance="@style/FastScrollerTextAppearance" />
 
         <com.reddit.indicatorfastscroll.FastScrollerThumbView
             android:id="@+id/letter_fastscroller_thumb"

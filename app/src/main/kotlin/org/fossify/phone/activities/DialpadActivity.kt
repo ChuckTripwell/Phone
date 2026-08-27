@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.grantland.widget.AutofitHelper
 import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.checkAppSideloading
@@ -253,6 +254,7 @@ class DialpadActivity : SimpleActivity() {
                 resources.getColoredDrawableWithColor(R.drawable.ic_person_vector, properTextColor)
             )
             customView?.findViewById<TextView>(R.id.tab_item_label)?.text = getString(R.string.contacts_tab)
+            AutofitHelper.create(customView?.findViewById(R.id.tab_item_label))
             binding.dialpadBottomBar.addTab(this)
         }
 
@@ -261,6 +263,7 @@ class DialpadActivity : SimpleActivity() {
                 resources.getColoredDrawableWithColor(R.drawable.ic_clock_vector, properTextColor)
             )
             customView?.findViewById<TextView>(R.id.tab_item_label)?.text = getString(R.string.call_history_tab)
+            AutofitHelper.create(customView?.findViewById(R.id.tab_item_label))
             binding.dialpadBottomBar.addTab(this)
         }
 
@@ -272,6 +275,7 @@ class DialpadActivity : SimpleActivity() {
                 setTextColor(properPrimaryColor)
                 text = getString(R.string.dialpad)
             }
+            AutofitHelper.create(customView?.findViewById(R.id.tab_item_label))
             binding.dialpadBottomBar.addTab(this)
         }
 

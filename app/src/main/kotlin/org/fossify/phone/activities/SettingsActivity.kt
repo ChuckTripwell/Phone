@@ -1,6 +1,7 @@
 package org.fossify.phone.activities
 
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
@@ -14,8 +15,10 @@ import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.baseConfig
 import org.fossify.commons.extensions.beVisibleIf
+import org.fossify.commons.extensions.getFilenameFromUri
 import org.fossify.commons.extensions.getFontSizeText
 import org.fossify.commons.extensions.getProperPrimaryColor
+import org.fossify.commons.extensions.isFontFile
 import org.fossify.commons.extensions.isOrWasThankYouInstalled
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.toast
@@ -25,6 +28,7 @@ import org.fossify.commons.helpers.FONT_SIZE_EXTRA_LARGE
 import org.fossify.commons.helpers.FONT_SIZE_LARGE
 import org.fossify.commons.helpers.FONT_SIZE_MEDIUM
 import org.fossify.commons.helpers.FONT_SIZE_SMALL
+import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.NavigationIcon
 import org.fossify.commons.helpers.ON_CLICK_CALL_CONTACT
 import org.fossify.commons.helpers.ON_CLICK_VIEW_CONTACT
@@ -44,12 +48,21 @@ import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.launchAccountsConfiguration
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.models.RecentCall
+import java.io.File
 import java.util.Locale
 import kotlin.system.exitProcess
 
 class SettingsActivity : SimpleActivity() {
     companion object {
         private const val CALL_HISTORY_FILE_TYPE = "application/json"
+        private const val HEBREW_FONT_CUSTOM = 3
+        private val FONT_FILE_MIME_TYPES = arrayOf(
+            "font/ttf",
+            "font/otf",
+            "application/x-font-ttf",
+            "application/x-font-otf",
+            "*/*"
+        )
         private val IMPORT_CALL_HISTORY_FILE_TYPES = buildList {
             add("application/json")
             if (!isQPlus()) {
@@ -76,6 +89,13 @@ class SettingsActivity : SimpleActivity() {
             }
         }
     }
+
+    private val fontFilePicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                handleHebrewFontFile(uri)
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -235,12 +255,18 @@ class SettingsActivity : SimpleActivity() {
             val items = arrayListOf(
                 RadioItem(0, getString(R.string.font_default)),
                 RadioItem(1, getString(R.string.font_serif)),
-                RadioItem(2, getString(R.string.font_monospace))
+                RadioItem(2, getString(R.string.font_monospace)),
+                RadioItem(HEBREW_FONT_CUSTOM, getString(org.fossify.commons.R.string.select_font_file))
             )
             val currentFont = config.hebrewFontType
-            RadioGroupDialog(this@SettingsActivity, items, currentFont) {
-                config.hebrewFontType = it as Int
-                binding.settingsHebrewFont.text = getHebrewFontText()
+            RadioGroupDialog(this@SettingsActivity, items, currentFont) { newValue ->
+                val selected = newValue as Int
+                if (selected == HEBREW_FONT_CUSTOM) {
+                    fontFilePicker.launch(FONT_FILE_MIME_TYPES)
+                } else {
+                    config.hebrewFontType = selected
+                    binding.settingsHebrewFont.text = getHebrewFontText()
+                }
             }
         }
     }
@@ -250,8 +276,48 @@ class SettingsActivity : SimpleActivity() {
             0 -> getString(R.string.font_default)
             1 -> getString(R.string.font_serif)
             2 -> getString(R.string.font_monospace)
+            HEBREW_FONT_CUSTOM ->
+                if (config.hebrewFontFile.isEmpty()) {
+                    getString(org.fossify.commons.R.string.select_font_file)
+                } else {
+                    config.hebrewFontFile
+                }
             else -> getString(R.string.font_default)
         }
+    }
+
+    private fun handleHebrewFontFile(uri: Uri) {
+        val fileName = getFilenameFromUri(uri)
+        if (fileName.isEmpty() || !fileName.isFontFile()) {
+            toast(org.fossify.commons.R.string.invalid_font_file)
+            return
+        }
+
+        val bytes = try {
+            contentResolver.openInputStream(uri)?.readBytes()
+        } catch (ignored: Exception) {
+            null
+        }
+
+        if (bytes == null || bytes.isEmpty()) {
+            toast(org.fossify.commons.R.string.invalid_font_file)
+            return
+        }
+
+        try {
+            val tempFile = File(cacheDir, fileName)
+            tempFile.writeBytes(bytes)
+            Typeface.createFromFile(tempFile)
+            tempFile.delete()
+        } catch (ignored: Exception) {
+            toast(org.fossify.commons.R.string.invalid_font_file)
+            return
+        }
+
+        FontHelper.saveFontData(this, bytes, fileName)
+        config.hebrewFontFile = fileName
+        config.hebrewFontType = HEBREW_FONT_CUSTOM
+        binding.settingsHebrewFont.text = getHebrewFontText()
     }
 
     private fun setupManageShownTabs() {

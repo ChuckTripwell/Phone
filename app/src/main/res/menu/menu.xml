@@ -26,11 +26,6 @@
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/column_count"
-        android:icon="@drawable/ic_column_count_vector"
-        android:title="@string/column_count"
-        app:showAsAction="never" />
-    <item
         android:id="@+id/settings"
         android:icon="@drawable/ic_settings_cog_vector"
         android:title="@string/settings"

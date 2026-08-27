@@ -66,10 +66,6 @@ class ContactsAdapter(
     init {
         setupDragListener(true)
 
-        if (recyclerView.layoutManager is GridLayoutManager) {
-            setupZoomListener(this)
-        }
-
         if (enableDrag) {
             touchHelper = ItemTouchHelper(ItemMoveCallback(this, viewType == VIEW_TYPE_GRID))
             touchHelper!!.attachToRecyclerView(recyclerView)
@@ -424,6 +420,7 @@ class ContactsAdapter(
             dragHandleIcon.apply {
                 if (contact.starred == 1) {
                     beVisible()
+                    setColorFilter(activity.getProperTextColor())
                     setOnTouchListener { _, event ->
                         if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
                             startReorderDragListener?.requestDrag(holder)
@@ -438,10 +435,32 @@ class ContactsAdapter(
 
             setupCallButton(binding, contact)
             setupStarButton(binding, contact)
+            positionDragHandle(binding, contact.starred == 1)
 
             if (!activity.isDestroyed) {
                 loadSquareContactImage(contact, itemContactImage)
             }
+        }
+    }
+
+    private fun positionDragHandle(binding: ItemViewBinding, isFavorite: Boolean) {
+        try {
+            val set = ConstraintSet()
+            set.clone(binding.itemContactFrame)
+            if (isFavorite) {
+                set.connect(binding.dragHandleIcon.id, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
+                set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
+                set.connect(binding.itemContactImage.id, ConstraintSet.START, binding.dragHandleIcon.id, ConstraintSet.END, 0)
+                set.connect(R.id.contact_star_button, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 0)
+            } else {
+                set.clear(binding.dragHandleIcon.id, ConstraintSet.START)
+                set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
+                set.connect(binding.itemContactImage.id, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
+                set.connect(R.id.contact_star_button, ConstraintSet.END, binding.dragHandleIcon.id, ConstraintSet.START, activity.resources.getDimensionPixelSize(R.dimen.small_margin))
+            }
+            set.connect(R.id.contact_call_button, ConstraintSet.END, R.id.contact_star_button, ConstraintSet.START, activity.resources.getDimensionPixelSize(R.dimen.small_margin))
+            set.applyTo(binding.itemContactFrame)
+        } catch (ignored: Exception) {
         }
     }
 
@@ -475,12 +494,13 @@ class ContactsAdapter(
                 setPadding(padding, padding, padding, padding)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
 
-                val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
+                val size = activity.resources.getDimensionPixelSize(R.dimen.call_button_size)
                 layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
                     endToStart = R.id.contact_star_button
                     topToTop = ConstraintSet.PARENT_ID
                     bottomToBottom = ConstraintSet.PARENT_ID
                     marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                    goneEndMargin = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
             }
             binding.itemContactFrame.addView(callButton)
