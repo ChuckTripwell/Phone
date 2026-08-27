@@ -199,7 +199,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         }
     }
 
-    private fun setupLetterFastScroller(contacts: ArrayList<Contact>) {
+    private fun setupLetterFastScroller(contacts: List<Contact>) {
         binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
     }
 
