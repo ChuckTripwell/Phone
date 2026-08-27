@@ -519,7 +519,7 @@ class ContactsAdapter(
                 }
 
                 setOnClickListener {
-                    val helper = SimpleContactsHelper(activity)
+                    val helper = ContactsHelper(activity)
                     if (contact.starred == 1) {
                         helper.removeFavorites(arrayListOf(contact))
                     } else {
