@@ -11,6 +11,7 @@ import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.getColorStateList
+import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.hasPermission
@@ -165,7 +166,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                     binding.fragmentList.addItemDecoration(
                         ContactsSectionDecoration(
                             contactsProvider = { adapterRef.contacts },
-                            dividerColor = ContextCompat.getColor(context, R.color.contacts_separator)
+                            dividerColor = context.getProperBackgroundColor().getContrastColor()
                         )
                     )
 
