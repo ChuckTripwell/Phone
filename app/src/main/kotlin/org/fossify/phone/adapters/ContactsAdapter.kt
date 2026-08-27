@@ -64,7 +64,7 @@ class ContactsAdapter(
     var onSpanCountListener: (Int) -> Unit = {}
 
     init {
-        setupDragListener(false)
+        setupDragListener(true)
 
         if (recyclerView.layoutManager is GridLayoutManager) {
             setupZoomListener(this)
@@ -125,7 +125,7 @@ class ContactsAdapter(
 
     override fun getSelectableItemCount() = contacts.size
 
-    override fun getIsItemSelectable(position: Int) = true
+    override fun getIsItemSelectable(position: Int) = contacts.getOrNull(position)?.starred != 1
 
     override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
 
@@ -384,11 +384,7 @@ class ContactsAdapter(
                         }
                     }
                     setOnLongClickListener { view ->
-                        if (contact.starred == 1) {
-                            startReorderDragListener?.requestDrag(holder)
-                        } else {
-                            holder.viewLongClicked()
-                        }
+                        holder.viewLongClicked()
                         true
                     }
                 }
@@ -426,8 +422,18 @@ class ContactsAdapter(
             }
 
             dragHandleIcon.apply {
-                beGone()
-                setOnTouchListener(null)
+                if (contact.starred == 1) {
+                    beVisible()
+                    setOnTouchListener { _, event ->
+                        if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
+                            startReorderDragListener?.requestDrag(holder)
+                        }
+                        false
+                    }
+                } else {
+                    beGone()
+                    setOnTouchListener(null)
+                }
             }
 
             setupCallButton(binding, contact)
@@ -513,10 +519,11 @@ class ContactsAdapter(
 
                 val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
                 layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    endToEnd = ConstraintSet.PARENT_ID
+                    endToStart = R.id.drag_handle_icon
                     topToTop = ConstraintSet.PARENT_ID
                     bottomToBottom = ConstraintSet.PARENT_ID
                     marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                    goneEndMargin = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
             }
             binding.itemContactFrame.addView(starButton)
