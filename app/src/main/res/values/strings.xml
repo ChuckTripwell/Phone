@@ -86,6 +86,7 @@
     <string name="hebrew_font">Hebrew font</string>
     <string name="font_default">Default</string>
     <string name="font_serif">Serif</string>
+    <string name="font_monospace">Monospace</string>
 
     <!-- FAQ -->
     <string name="faq_1_title">I hear incoming calls, but the screen doesn\'t turn on. What can I do?</string>
