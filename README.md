@@ -47,7 +47,6 @@ To build and release a signed APK via GitHub Actions, you need to configure the 
 | `SIGNING_STORE_PASSWORD` | Keystore password | Set when generating the keystore with `keytool` |
 | `SIGNING_KEY_ALIAS` | Key alias name | Set with `-alias` flag when generating the keystore |
 | `SIGNING_KEY_PASSWORD` | Key password | Set with `-keypass` when generating the keystore |
-| `GH_TOKEN` | GitHub Personal Access Token (PAT) with `repo` scope | Generate at https://github.com/settings/tokens → Generate new token (classic) → Select `repo` scope |
 
 ### Key Generation Method
 
@@ -65,7 +64,6 @@ base64 -w 0 release.keystore > keystore_base64.txt
 
 # 3. Copy the contents of keystore_base64.txt to the SIGNING_STORE_FILE secret
 # 4. Set SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, and SIGNING_KEY_PASSWORD secrets
-# 5. Generate a PAT at https://github.com/settings/tokens with repo scope for GH_TOKEN
 ```
 
 ### Setting Up Secrets in GitHub
