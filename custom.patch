@@ -1028,10 +1028,10 @@ index e796de18..58308aee 100644
          }
  
 diff --git a/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt b/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
-index 57c5412c..0041b25a 100644
+index 57c5412c..84d48d69 100644
 --- a/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
-@@ -8,9 +8,14 @@ import org.fossify.commons.models.contacts.Contact
+@@ -8,12 +8,41 @@ import org.fossify.commons.models.contacts.Contact
  fun FastScrollerView.setupWithContacts(
      recyclerView: RecyclerView,
      contacts: List<Contact>,
@@ -1039,16 +1039,43 @@ index 57c5412c..0041b25a 100644
  ) = setupWithRecyclerView(recyclerView, { position ->
      val initialLetter = try {
 -        contacts[position].getFirstLetter()
-+        if (useStarForFavorites && contacts[position].starred == 1) {
++        val contact = contacts[position]
++        if (useStarForFavorites && contact.starred == 1) {
 +            "*"
 +        } else {
-+            contacts[position].getFirstLetter()
++            sanitizeFirstLetter(contact.getNameToDisplay())
 +        }
      } catch (e: IndexOutOfBoundsException) {
          ""
      }
+ 
+     FastScrollItemIndicator.Text(initialLetter)
+ })
++
++// Returns the first real letter/digit of a name, skipping emojis and symbols.
++private fun sanitizeFirstLetter(name: String): String {
++    if (name.isEmpty()) return ""
++    var index = 0
++    while (index < name.length) {
++        val cp = name.codePointAt(index)
++        val c = String(Character.toChars(cp))[0]
++        if (isEmojiCodePoint(cp) || !c.isLetterOrDigit()) {
++            index += Character.charCount(cp)
++            continue
++        }
++        return c.toString().uppercase()
++    }
++    return ""
++}
++
++private fun isEmojiCodePoint(cp: Int): Boolean {
++    return cp in 0x1F000..0x1FAFF || // emoticons, symbols, pictographs
++        cp in 0x2600..0x27BF || // misc symbols / dingbats
++        cp == 0x00A9 || cp == 0x00AE || cp == 0x2122 || cp == 0x3030 || // © ® ™ 〰
++        cp in 0xFE00..0xFE0F || cp in 0xFE20..0xFE2F // variation selectors
++}
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
-index 9a26a05f..cb225a8f 100644
+index 9a26a05f..bfb992ab 100644
 --- a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 @@ -2,6 +2,8 @@ package org.fossify.phone.fragments
@@ -1095,7 +1122,7 @@ index 9a26a05f..cb225a8f 100644
  
      override fun onFinishInflate() {
          super.onFinishInflate()
-@@ -88,19 +96,35 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -88,19 +96,33 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
      override fun refreshItems(invalidate: Boolean, callback: (() -> Unit)?) {
          val privateCursor = context?.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
          ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
@@ -1117,11 +1144,9 @@ index 9a26a05f..cb225a8f 100644
 +            val favorites = rawContacts.filter { it.starred == 1 } as ArrayList<Contact>
 +            val regularContacts = rawContacts.filter { it.starred != 1 } as ArrayList<Contact>
 +
-+            val sortedFavorites = if (activity!!.config.isCustomOrderSelected) {
-+                sortByCustomOrder(favorites)
-+            } else {
-+                favorites
-+            }
++            // Favorites are always ordered by their drag-reorder order; the "sort by"
++            // control must never reorder them.
++            val sortedFavorites = sortByCustomOrder(favorites)
 +
 +            favoritesCount = sortedFavorites.size
 +
@@ -1136,7 +1161,7 @@ index 9a26a05f..cb225a8f 100644
                  callback?.invoke()
              }
          }
-@@ -127,6 +151,8 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -127,6 +149,8 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                      contacts = contacts,
                      recyclerView = binding.fragmentList,
                      refreshItemsListener = this,
@@ -1145,7 +1170,7 @@ index 9a26a05f..cb225a8f 100644
                      itemClick = {
                          activity?.handleGenericContactClick(it as Contact)
                      },
-@@ -135,6 +161,23 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -135,6 +159,23 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                      }
                  ).apply {
                      binding.fragmentList.adapter = this
@@ -1169,7 +1194,7 @@ index 9a26a05f..cb225a8f 100644
                  }
  
                  if (context.areSystemAnimationsEnabled) {
-@@ -146,8 +189,29 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -146,8 +187,29 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
          }
      }
  
@@ -1178,7 +1203,7 @@ index 9a26a05f..cb225a8f 100644
 +    private fun sortByCustomOrder(favorites: List<Contact>): ArrayList<Contact> {
 +        val favoritesOrder = activity!!.config.favoritesContactsOrder
 +        if (favoritesOrder.isEmpty()) {
-+            return ArrayList(favorites)
++            return ArrayList(favorites.sortedBy { it.getNameToDisplay() })
 +        }
 +        val orderList = Converters().jsonToStringList(favoritesOrder)
 +        val map = orderList.withIndex().associate { it.value to it.index }
@@ -1533,6 +1558,42 @@ index 69c98cc5..0a0b780e 100644
              <RelativeLayout
                  android:id="@+id/settings_start_name_with_surname_holder"
                  style="@style/SettingsHolderSwitchStyle"
+diff --git a/app/src/main/res/layout/bottom_tablayout_item.xml b/app/src/main/res/layout/bottom_tablayout_item.xml
+new file mode 100644
+index 00000000..870eb351
+--- /dev/null
++++ b/app/src/main/res/layout/bottom_tablayout_item.xml
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:id="@+id/tab_item_holder"
++    android:layout_width="wrap_content"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:gravity="center">
++
++    <ImageView
++        android:id="@+id/tab_item_icon"
++        android:layout_width="22dp"
++        android:layout_height="22dp"
++        android:layout_gravity="center_horizontal"
++        android:scaleType="fitCenter"
++        tools:src="@drawable/ic_person_vector" />
++
++    <TextView
++        android:id="@+id/tab_item_label"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center"
++        android:gravity="center_horizontal"
++        android:includeFontPadding="false"
++        android:maxLines="1"
++        android:paddingTop="2dp"
++        android:textSize="@dimen/small_text_size"
++        tools:text="@string/contacts_tab" />
++
++</LinearLayout>
 diff --git a/app/src/main/res/layout/dialog_manage_visible_tabs.xml b/app/src/main/res/layout/dialog_manage_visible_tabs.xml
 index 2a4f7ca9..11adc4e6 100644
 --- a/app/src/main/res/layout/dialog_manage_visible_tabs.xml
@@ -1553,10 +1614,19 @@ index 2a4f7ca9..11adc4e6 100644
              android:id="@+id/manage_visible_tabs_call_history"
              android:layout_width="match_parent"
 diff --git a/app/src/main/res/layout/fragment_letters_layout.xml b/app/src/main/res/layout/fragment_letters_layout.xml
-index 11eb57e8..b2ce8aca 100644
+index 11eb57e8..6f5fd21c 100644
 --- a/app/src/main/res/layout/fragment_letters_layout.xml
 +++ b/app/src/main/res/layout/fragment_letters_layout.xml
-@@ -42,6 +42,7 @@
+@@ -5,7 +5,7 @@
+     <RelativeLayout
+         android:id="@+id/fragment_wrapper"
+         android:layout_width="match_parent"
+-        android:layout_height="wrap_content">
++        android:layout_height="match_parent">
+ 
+         <org.fossify.commons.views.MyTextView
+             android:id="@+id/fragment_placeholder"
+@@ -42,16 +42,18 @@
              android:clipToPadding="false"
              android:layoutAnimation="@anim/layout_animation"
              android:paddingBottom="@dimen/recyclerview_fab_padding"
@@ -1564,11 +1634,12 @@ index 11eb57e8..b2ce8aca 100644
              android:scrollbars="none"
              app:layoutManager="org.fossify.commons.views.MyLinearLayoutManager" />
  
-@@ -49,9 +50,10 @@
+         <com.reddit.indicatorfastscroll.FastScrollerView
              android:id="@+id/letter_fastscroller"
              android:layout_width="32dp"
-             android:layout_height="wrap_content"
+-            android:layout_height="wrap_content"
 -            android:layout_alignParentEnd="true"
++            android:layout_height="match_parent"
 +            android:layout_alignParentStart="true"
              android:paddingTop="@dimen/big_margin"
 -            android:paddingBottom="@dimen/big_margin" />
@@ -1677,7 +1748,7 @@ index ce9da31b..28e9cf41 100644
 +    <color name="default_text_color">#FF000000</color>
  </resources>
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
-index dacf1a28..09d9c4b6 100644
+index dacf1a28..4d711eda 100644
 --- a/app/src/main/res/values/dimens.xml
 +++ b/app/src/main/res/values/dimens.xml
 @@ -12,10 +12,33 @@
@@ -1688,13 +1759,13 @@ index dacf1a28..09d9c4b6 100644
 +    <dimen name="call_button_corner_radius">8dp</dimen>
 +    <!-- shrunk + condensed action buttons -->
 +    <dimen name="call_button_size">44dp</dimen>
-+    <dimen name="star_button_size">44dp</dimen>
++    <dimen name="star_button_size">72dp</dimen>
 +
 +    <!-- make contact face-icons bigger and square everywhere (overrides commons) -->
 +    <dimen name="list_icon_size_medium">52dp</dimen>
 +
 +    <!-- clears the fast-scroller on the left so list items don't sit under the letters -->
-+    <dimen name="contacts_list_start_padding">44dp</dimen>
++    <dimen name="contacts_list_start_padding">32dp</dimen>
 +
 +    <!-- FAB positioning: inset from left edge past the fast scroller and raised above tabs -->
 +    <dimen name="fab_start_margin">76dp</dimen>
