@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
 import org.fossify.commons.adapters.MyRecyclerViewAdapter
 import org.fossify.commons.databinding.ItemContactWithoutNumberBinding
 import org.fossify.commons.databinding.ItemContactWithoutNumberGridBinding
@@ -372,7 +373,7 @@ class ContactsAdapter(
 
             itemContactImage.apply {
                 if (profileIconClick != null && viewType != VIEW_TYPE_GRID) {
-                    setBackgroundResource(R.drawable.selector_clickable_circle)
+                    setBackgroundResource(R.drawable.selector_clickable)
 
                     setOnClickListener {
                         if (!actModeCallback.isSelectable) {
@@ -429,10 +430,26 @@ class ContactsAdapter(
             }
 
             setupCallButton(binding, contact)
+            setupStarButton(binding, contact)
 
             if (!activity.isDestroyed) {
-                SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
+                loadSquareContactImage(contact, itemContactImage)
             }
+        }
+    }
+
+    private fun loadSquareContactImage(contact: Contact, imageView: ImageView) {
+        val placeholder = resources.getDrawable(R.drawable.ic_person_vector)
+        val uri = contact.photoUri
+        if (uri.isNullOrEmpty()) {
+            imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+            imageView.setImageDrawable(placeholder)
+        } else {
+            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+            Glide.with(activity)
+                .load(uri)
+                .apply(RequestOptions().centerCrop().placeholder(placeholder).error(placeholder))
+                .into(imageView)
         }
     }
 
@@ -443,14 +460,14 @@ class ContactsAdapter(
                 id = R.id.contact_call_button
                 val drawable = ContextCompat.getDrawable(activity, R.drawable.ic_phone_green_call)
                 setImageDrawable(drawable)
-                background = ContextCompat.getDrawable(activity, R.drawable.circle_button_background_ripple)
+                background = ContextCompat.getDrawable(activity, R.drawable.call_button_background_green)
                 val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 setPadding(padding, padding, padding, padding)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
 
                 val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
                 layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    endToEnd = ConstraintSet.PARENT_ID
+                    endToStart = R.id.contact_star_button
                     topToTop = ConstraintSet.PARENT_ID
                     bottomToBottom = ConstraintSet.PARENT_ID
                     marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
@@ -481,20 +498,67 @@ class ContactsAdapter(
         }
     }
 
+    private fun setupStarButton(binding: ItemViewBinding, contact: Contact) {
+        val existingButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_star_button)
+        if (existingButton == null) {
+            val starButton = ImageView(activity).apply {
+                id = R.id.contact_star_button
+                val isFavorite = contact.starred == 1
+                val drawableRes = if (isFavorite) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
+                setImageDrawable(ContextCompat.getDrawable(activity, drawableRes))
+                val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                setPadding(padding, padding, padding, padding)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+
+                val size = activity.resources.getDimensionPixelSize(R.dimen.normal_icon_size) + padding * 2
+                layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
+                    endToEnd = ConstraintSet.PARENT_ID
+                    topToTop = ConstraintSet.PARENT_ID
+                    bottomToBottom = ConstraintSet.PARENT_ID
+                    marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
+                }
+
+                setOnClickListener {
+                    val helper = SimpleContactsHelper(activity)
+                    if (contact.starred == 1) {
+                        helper.removeFavorites(arrayListOf(contact))
+                    } else {
+                        helper.addFavorites(arrayListOf(contact))
+                    }
+                    refreshItemsListener?.refreshItems()
+                }
+            }
+            binding.itemContactFrame.addView(starButton)
+        }
+    }
+
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
         activity.config.isCustomOrderSelected = true
 
-        if (fromPosition < toPosition) {
-            for (i in fromPosition until toPosition) {
+        val boundary = if (contacts.isEmpty()) {
+            0
+        } else {
+            val firstRegular = contacts.indexOfFirst { it.starred != 1 }
+            if (firstRegular == -1) contacts.size else firstRegular
+        }
+
+        val target = if (fromPosition < boundary) {
+            toPosition.coerceIn(0, (boundary - 1).coerceAtLeast(0))
+        } else {
+            toPosition.coerceIn(boundary, (contacts.size - 1).coerceAtLeast(boundary))
+        }
+
+        if (fromPosition < target) {
+            for (i in fromPosition until target) {
                 Collections.swap(contacts, i, i + 1)
             }
         } else {
-            for (i in fromPosition downTo toPosition + 1) {
+            for (i in fromPosition downTo target + 1) {
                 Collections.swap(contacts, i, i - 1)
             }
         }
 
-        notifyItemMoved(fromPosition, toPosition)
+        notifyItemMoved(fromPosition, target)
     }
 
     override fun onRowSelected(myViewHolder: ViewHolder?) {}

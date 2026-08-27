@@ -12,8 +12,11 @@
     <dimen name="call_control_button_size">72dp</dimen>
     <dimen name="recyclerview_fab_padding">100dp</dimen>
 
+    <!-- clears the fast-scroller on the left so list items don't sit under the letters -->
+    <dimen name="contacts_list_start_padding">44dp</dimen>
+
     <!-- FAB positioning: inset from left edge past the fast scroller and raised above tabs -->
-    <dimen name="fab_start_margin">104dp</dimen>
+    <dimen name="fab_start_margin">76dp</dimen>
     <dimen name="fab_bottom_margin">24dp</dimen>
 
     <dimen name="caller_name_text_size">34sp</dimen>
