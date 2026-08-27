@@ -39,5 +39,5 @@
     <dimen name="fast_scroller_letter_size">9sp</dimen>
 
     <!-- bottom nav bars share an explicit height so dialer matches main -->
-    <dimen name="bottom_nav_min_height">48dp</dimen>
+    <dimen name="bottom_nav_min_height">60dp</dimen>
 </resources>

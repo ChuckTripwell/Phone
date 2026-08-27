@@ -64,7 +64,7 @@ class ContactsAdapter(
     var onSpanCountListener: (Int) -> Unit = {}
 
     init {
-        setupDragListener(true)
+        setupDragListener(false)
 
         if (enableDrag) {
             touchHelper = ItemTouchHelper(ItemMoveCallback(this, viewType == VIEW_TYPE_GRID))
@@ -128,7 +128,7 @@ class ContactsAdapter(
 
     override fun getSelectableItemCount() = contacts.size
 
-    override fun getIsItemSelectable(position: Int) = contacts.getOrNull(position)?.starred != 1
+    override fun getIsItemSelectable(position: Int) = true
 
     override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
 
