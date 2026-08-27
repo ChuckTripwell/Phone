@@ -15,26 +15,27 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout main branch
+      - name: Checkout custom-patch (holds workflow + raw patch)
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: custom-patch
           fetch-depth: 0
 
-      - name: Sync main branch
-        run: |
-          git fetch origin main
-          git checkout main
-          git pull origin main
+      - name: Stash raw patch (lives on custom-patch branch)
+        run: cp custom.patch $RUNNER_TEMP/custom.patch
 
-      - name: Checkout custom-patch branch
-        run: git checkout custom-patch
-
-      - name: Merge main into custom-patch
+      - name: Update main from upstream (overwrite any local changes)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git merge origin/main --no-edit || true
+          git fetch origin
+          git checkout main
+          git reset --hard origin/main
+
+      - name: Apply raw custom patch onto main
+        run: |
+          git apply --check $RUNNER_TEMP/custom.patch
+          git apply $RUNNER_TEMP/custom.patch
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -81,9 +82,9 @@ jobs:
           name: "Custom Patch v${{ steps.version.outputs.version_name }}"
           body: |
             ## Custom Patch Release
-            
-            This is an automatically built release from the `custom-patch` branch.
-            
+
+            This APK is built by applying the raw custom patch (`custom.patch`) on top of the latest upstream `main`.
+
             ### Changes from main:
             - Merged favorites into contacts screen
             - FAB changed to add-contact button
@@ -93,7 +94,7 @@ jobs:
             - Black outline on calling screen text
             - Hebrew font setting
             - Long-press to reorder favorites
-            
+
             ### Version: ${{ steps.version.outputs.version_name }} (build ${{ steps.version.outputs.version_code }})
           files: ${{ steps.find-apk.outputs.apk_path }}
           draft: false
