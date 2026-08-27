@@ -3,6 +3,7 @@ package org.fossify.phone.adapters
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ShortcutInfo
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.text.TextUtils
@@ -439,24 +440,27 @@ class ContactsAdapter(
     }
 
     private fun loadSquareContactImage(contact: Contact, imageView: ImageView) {
-        val placeholder = resources.getDrawable(R.drawable.ic_person_vector)
+        val letterDrawable = BitmapDrawable(
+            activity.resources,
+            SimpleContactsHelper(activity).getContactLetterIcon(contact.getNameToDisplay())
+        )
         val uri = contact.photoUri
         if (uri.isNullOrEmpty()) {
             imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-            imageView.setImageDrawable(placeholder)
+            imageView.setImageDrawable(letterDrawable)
         } else {
             imageView.scaleType = ImageView.ScaleType.CENTER_CROP
             Glide.with(activity)
                 .load(uri)
-                .apply(RequestOptions().centerCrop().placeholder(placeholder).error(placeholder))
+                .apply(RequestOptions().centerCrop().placeholder(letterDrawable).error(letterDrawable))
                 .into(imageView)
         }
     }
 
     private fun setupCallButton(binding: ItemViewBinding, contact: Contact) {
-        val existingButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_call_button)
-        if (existingButton == null) {
-            val callButton = ImageView(activity).apply {
+        var callButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_call_button)
+        if (callButton == null) {
+            callButton = ImageView(activity).apply {
                 id = R.id.contact_call_button
                 val drawable = ContextCompat.getDrawable(activity, R.drawable.ic_phone_green_call)
                 setImageDrawable(drawable)
@@ -472,19 +476,6 @@ class ContactsAdapter(
                     bottomToBottom = ConstraintSet.PARENT_ID
                     marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
-
-                setOnClickListener {
-                    val number = contact.getPrimaryNumber()
-                    if (!number.isNullOrEmpty()) {
-                        activity.handlePermission(PERMISSION_CALL_PHONE) { hasPermission ->
-                            val action = if (hasPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
-                            val intent = Intent(action).apply {
-                                data = Uri.fromParts("tel", number, null)
-                            }
-                            activity.startActivity(intent)
-                        }
-                    }
-                }
             }
             binding.itemContactFrame.addView(callButton)
 
@@ -496,16 +487,26 @@ class ContactsAdapter(
             } catch (ignored: Exception) {
             }
         }
+
+        callButton.setOnClickListener {
+            val number = contact.getPrimaryNumber()
+            if (!number.isNullOrEmpty()) {
+                activity.handlePermission(PERMISSION_CALL_PHONE) { hasPermission ->
+                    val action = if (hasPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
+                    val intent = Intent(action).apply {
+                        data = Uri.fromParts("tel", number, null)
+                    }
+                    activity.startActivity(intent)
+                }
+            }
+        }
     }
 
     private fun setupStarButton(binding: ItemViewBinding, contact: Contact) {
-        val existingButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_star_button)
-        if (existingButton == null) {
-            val starButton = ImageView(activity).apply {
+        var starButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_star_button)
+        if (starButton == null) {
+            starButton = ImageView(activity).apply {
                 id = R.id.contact_star_button
-                val isFavorite = contact.starred == 1
-                val drawableRes = if (isFavorite) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
-                setImageDrawable(ContextCompat.getDrawable(activity, drawableRes))
                 val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 setPadding(padding, padding, padding, padding)
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -517,18 +518,25 @@ class ContactsAdapter(
                     bottomToBottom = ConstraintSet.PARENT_ID
                     marginEnd = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
                 }
-
-                setOnClickListener {
-                    val helper = ContactsHelper(activity)
-                    if (contact.starred == 1) {
-                        helper.removeFavorites(arrayListOf(contact))
-                    } else {
-                        helper.addFavorites(arrayListOf(contact))
-                    }
-                    refreshItemsListener?.refreshItems()
-                }
             }
             binding.itemContactFrame.addView(starButton)
+        }
+
+        starButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                activity,
+                if (contact.starred == 1) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
+            )
+        )
+        starButton.setOnClickListener {
+            val helper = ContactsHelper(activity)
+            val isFavorite = contact.starred == 1
+            if (isFavorite) {
+                helper.removeFavorites(arrayListOf(contact))
+            } else {
+                helper.addFavorites(arrayListOf(contact))
+            }
+            refreshItemsListener?.refreshItems()
         }
     }
 

@@ -14,15 +14,19 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.checkAppSideloading
+import org.fossify.commons.extensions.getBottomNavigationBackgroundColor
 import org.fossify.commons.extensions.getColorStateList
 import org.fossify.commons.extensions.getColoredDrawableWithColor
 import org.fossify.commons.extensions.getContrastColor
@@ -42,6 +46,7 @@ import org.fossify.commons.helpers.LOWER_ALPHA_INT
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.NavigationIcon
 import org.fossify.commons.helpers.REQUEST_CODE_SET_DEFAULT_DIALER
+import org.fossify.commons.helpers.TAB_CONTACTS
 import org.fossify.commons.helpers.isOreoPlus
 import org.fossify.commons.models.contacts.Contact
 import org.fossify.phone.R
@@ -97,9 +102,10 @@ class DialpadActivity : SimpleActivity() {
 
         binding.apply {
             setupEdgeToEdge(
-                padBottomImeAndSystem = listOf(dialpadList, dialpadHolder)
+                padBottomImeAndSystem = listOf(dialpadList, dialpadHolder, dialpadBottomBar)
             )
             setupMaterialScrollListener(binding.dialpadList, binding.dialpadAppbar)
+            setupBottomBar()
         }
 
         if (checkAppSideloading()) {
@@ -234,6 +240,66 @@ class DialpadActivity : SimpleActivity() {
                 else -> return@setOnMenuItemClickListener false
             }
             return@setOnMenuItemClickListener true
+        }
+    }
+
+    private fun setupBottomBar() {
+        binding.dialpadBottomBar.removeAllTabs()
+        val properTextColor = getProperTextColor()
+        val properPrimaryColor = getProperPrimaryColor()
+
+        binding.dialpadBottomBar.newTab().setCustomView(R.layout.bottom_tablayout_item).apply {
+            customView?.findViewById<ImageView>(R.id.tab_item_icon)?.setImageDrawable(
+                resources.getColoredDrawableWithColor(R.drawable.ic_person_vector, properTextColor)
+            )
+            customView?.findViewById<TextView>(R.id.tab_item_label)?.text = getString(R.string.contacts_tab)
+            binding.dialpadBottomBar.addTab(this)
+        }
+
+        binding.dialpadBottomBar.newTab().setCustomView(R.layout.bottom_tablayout_item).apply {
+            customView?.findViewById<ImageView>(R.id.tab_item_icon)?.setImageDrawable(
+                resources.getColoredDrawableWithColor(R.drawable.ic_clock_vector, properTextColor)
+            )
+            customView?.findViewById<TextView>(R.id.tab_item_label)?.text = getString(R.string.call_history_tab)
+            binding.dialpadBottomBar.addTab(this)
+        }
+
+        binding.dialpadBottomBar.newTab().setCustomView(R.layout.bottom_tablayout_item).apply {
+            customView?.findViewById<ImageView>(R.id.tab_item_icon)?.setImageDrawable(
+                resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor)
+            )
+            customView?.findViewById<TextView>(R.id.tab_item_label)?.apply {
+                setTextColor(properPrimaryColor)
+                text = getString(R.string.dialpad)
+            }
+            binding.dialpadBottomBar.addTab(this)
+        }
+
+        binding.dialpadBottomBar.setBackgroundColor(getBottomNavigationBackgroundColor())
+
+        binding.dialpadBottomBar.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                when (tab.position) {
+                    0 -> openMainTab(0)
+                    1 -> openMainTab(if (config.showTabs and TAB_CONTACTS != 0) 1 else 0)
+                }
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+
+            override fun onTabReselected(tab: TabLayout.Tab) {
+                if (tab.position != 2) {
+                    onTabSelected(tab)
+                }
+            }
+        })
+    }
+
+    private fun openMainTab(index: Int) {
+        if (index >= 0) {
+            config.lastUsedViewPagerPage = index
+            startActivity(Intent(applicationContext, MainActivity::class.java))
+            finish()
         }
     }
 
