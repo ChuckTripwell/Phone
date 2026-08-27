@@ -90,6 +90,12 @@ class ContactsAdapter(
             findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
             findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
 
+            val isFavoriteSelected = isOneItemSelected && getSelectedItems().firstOrNull()?.starred == 1
+            findItem(R.id.cab_toggle_favorite).isVisible = isOneItemSelected
+            findItem(R.id.cab_toggle_favorite).title = activity.getString(
+                if (isFavoriteSelected) R.string.remove_from_favorites else R.string.add_to_favorites
+            )
+
             findItem(R.id.cab_delete).isVisible = showDeleteButton
             findItem(R.id.cab_create_shortcut).title = activity.addLockedLabelIfNeeded(R.string.create_shortcut)
             findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected && isOreoPlus()
@@ -114,6 +120,7 @@ class ContactsAdapter(
             R.id.cab_delete -> askConfirmDelete()
             R.id.cab_send_sms -> sendSMS()
             R.id.cab_view_details -> viewContactDetails()
+            R.id.cab_toggle_favorite -> toggleFavorites()
             R.id.cab_create_shortcut -> tryCreateShortcut()
             R.id.cab_select_all -> selectAll()
         }
@@ -121,7 +128,7 @@ class ContactsAdapter(
 
     override fun getSelectableItemCount() = contacts.size
 
-    override fun getIsItemSelectable(position: Int) = contacts.getOrNull(position)?.starred != 1
+    override fun getIsItemSelectable(position: Int) = true
 
     override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
 
@@ -311,6 +318,22 @@ class ContactsAdapter(
 
     private fun getSelectedItems() = contacts.filter { selectedKeys.contains(it.rawId) } as ArrayList<Contact>
 
+    private fun toggleFavorites() {
+        val selected = getSelectedItems()
+        if (selected.isEmpty()) return
+
+        val helper = ContactsHelper(activity)
+        val favorites = selected.filter { it.starred == 1 }
+        val nonFavorites = selected.filter { it.starred != 1 }
+        if (favorites.isNotEmpty()) {
+            helper.removeFavorites(favorites as ArrayList<Contact>)
+        }
+        if (nonFavorites.isNotEmpty()) {
+            helper.addFavorites(nonFavorites as ArrayList<Contact>)
+        }
+        refreshItemsListener?.refreshItems()
+    }
+
     private fun getSelectedPhoneNumber(): String? {
         return getSelectedItems().firstOrNull()?.getPrimaryNumber()
     }
@@ -423,37 +446,11 @@ class ContactsAdapter(
                 }
             }
 
-            dragHandleIcon.apply {
-                if (contact.starred == 1) {
-                    beVisible()
-                    setColorFilter(activity.getProperTextColor())
-                    val detector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
-                        override fun onDown(e: MotionEvent): Boolean = true
-
-                        override fun onSingleTapUp(e: MotionEvent): Boolean {
-                            if (!actModeCallback.isSelectable) {
-                                ContactsHelper(activity).removeFavorites(arrayListOf(contact))
-                                refreshItemsListener?.refreshItems()
-                            }
-                            return true
-                        }
-
-                        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                            if (!actModeCallback.isSelectable) {
-                                startReorderDragListener?.requestDrag(holder)
-                            }
-                            return false
-                        }
-                    })
-                    setOnTouchListener { _, event -> detector.onTouchEvent(event) }
-                } else {
-                    beGone()
-                    setOnTouchListener(null)
-                }
-            }
+            dragHandleIcon.beGone()
+            dragHandleIcon.setOnTouchListener(null)
 
             setupCallButton(binding, contact)
-            setupStarButton(binding, contact)
+            setupStarButton(binding, contact, holder)
             positionDragHandle(binding, contact.starred == 1)
 
             if (!activity.isDestroyed) {
@@ -467,15 +464,7 @@ class ContactsAdapter(
             val set = ConstraintSet()
             set.clone(binding.itemContactFrame)
             val gap = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-            if (isFavorite) {
-                set.connect(binding.dragHandleIcon.id, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-                set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
-                set.connect(R.id.contact_star_button, ConstraintSet.START, binding.dragHandleIcon.id, ConstraintSet.END, gap)
-            } else {
-                set.clear(binding.dragHandleIcon.id, ConstraintSet.START)
-                set.clear(binding.dragHandleIcon.id, ConstraintSet.END)
-                set.connect(R.id.contact_star_button, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-            }
+            set.connect(R.id.contact_star_button, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
             set.clear(R.id.contact_star_button, ConstraintSet.END)
             set.connect(binding.itemContactImage.id, ConstraintSet.START, R.id.contact_star_button, ConstraintSet.END, gap)
             set.connect(R.id.contact_call_button, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, gap)
@@ -539,7 +528,8 @@ class ContactsAdapter(
         }
     }
 
-    private fun setupStarButton(binding: ItemViewBinding, contact: Contact) {
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupStarButton(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
         var starButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_star_button)
         if (starButton == null) {
             starButton = ImageView(activity).apply {
@@ -560,19 +550,34 @@ class ContactsAdapter(
         starButton.setImageDrawable(
             ContextCompat.getDrawable(
                 activity,
-                if (contact.starred == 1) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
+                if (contact.starred == 1) R.drawable.ic_star_handle_gold else R.drawable.ic_star_outline_gold
             )
         )
-        starButton.setOnClickListener {
-            val helper = ContactsHelper(activity)
-            val isFavorite = contact.starred == 1
-            if (isFavorite) {
-                helper.removeFavorites(arrayListOf(contact))
-            } else {
-                helper.addFavorites(arrayListOf(contact))
+
+        val detector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent): Boolean = true
+
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                if (!actModeCallback.isSelectable) {
+                    val helper = ContactsHelper(activity)
+                    if (contact.starred == 1) {
+                        helper.removeFavorites(arrayListOf(contact))
+                    } else {
+                        helper.addFavorites(arrayListOf(contact))
+                    }
+                    refreshItemsListener?.refreshItems()
+                }
+                return true
             }
-            refreshItemsListener?.refreshItems()
-        }
+
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+                if (contact.starred == 1 && !actModeCallback.isSelectable) {
+                    startReorderDragListener?.requestDrag(holder)
+                }
+                return false
+            }
+        })
+        starButton.setOnTouchListener { _, event -> detector.onTouchEvent(event) }
     }
 
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
