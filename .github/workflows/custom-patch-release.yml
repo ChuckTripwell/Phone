@@ -2,6 +2,8 @@ name: Build and Release Custom Patch APK
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 1 * *'
   push:
     branches:
       - custom-patch
