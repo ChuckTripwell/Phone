@@ -286,11 +286,12 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun setupTabColors() {
+        val tabIconsCount = getSelectedTabDrawableIds().size
         val activeIndex = binding.viewPager.currentItem
         val activeView = binding.mainTabsHolder.getTabAt(activeIndex)?.customView
         updateBottomTabItemColors(activeView, true, getSelectedTabDrawableIds()[activeIndex])
 
-        getInactiveTabIndexes(activeIndex).forEach { index ->
+        (0 until tabIconsCount).filter { it != activeIndex }.forEach { index ->
             val inactiveView = binding.mainTabsHolder.getTabAt(index)?.customView
             updateBottomTabItemColors(inactiveView, false, getDeselectedTabDrawableIds()[index])
         }
@@ -298,8 +299,6 @@ class MainActivity : SimpleActivity() {
         val bottomBarColor = getBottomNavigationBackgroundColor()
         binding.mainTabsHolder.setBackgroundColor(bottomBarColor)
     }
-
-    private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filter { it != activeIndex }
 
     private fun getSelectedTabDrawableIds(): List<Int> {
         val showTabs = config.showTabs
