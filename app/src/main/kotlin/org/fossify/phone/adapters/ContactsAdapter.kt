@@ -557,11 +557,43 @@ class ContactsAdapter(
         val isFavorite = contact.starred == 1
         if (isFavorite) {
             starButton.setOnClickListener(null)
-            starButton.setOnTouchListener { _, event ->
-                if (event.actionMasked == MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
-                    startReorderDragListener?.requestDrag(holder)
+            starButton.setOnTouchListener { v, event ->
+                if (actModeCallback.isSelectable) {
+                    v.performClick()
+                    return@setOnTouchListener true
                 }
-                false
+
+                var downX = 0f
+                var downY = 0f
+                var downTime = 0L
+                var dragged = false
+                val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
+
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.x
+                        downY = event.y
+                        downTime = event.eventTime
+                        dragged = false
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (kotlin.math.hypot(event.x - downX, event.y - downY) > touchSlop) {
+                            dragged = true
+                            startReorderDragListener?.requestDrag(holder)
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        if (!dragged && (event.eventTime - downTime) < ViewConfiguration.getLongPressTimeout()) {
+                            ContactsHelper(activity).removeFavorites(arrayListOf(contact))
+                            refreshItemsListener?.refreshItems()
+                        }
+                        v.performClick()
+                        true
+                    }
+                    else -> true
+                }
             }
         } else {
             starButton.setOnTouchListener(null)

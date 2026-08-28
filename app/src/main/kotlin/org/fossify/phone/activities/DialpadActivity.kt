@@ -103,7 +103,7 @@ class DialpadActivity : SimpleActivity() {
 
         binding.apply {
             setupEdgeToEdge(
-                padBottomImeAndSystem = listOf(dialpadList, dialpadHolder, dialpadBottomBar)
+                padBottomImeAndSystem = listOf(dialpadHolder)
             )
             setupMaterialScrollListener(binding.dialpadList, binding.dialpadAppbar)
             setupBottomBar()
