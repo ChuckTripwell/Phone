@@ -465,7 +465,7 @@ class RecentCallsAdapter(
     private inner class RecentCallViewHolder(val binding: ItemRecentCallBinding) : ViewHolder(binding.root) {
         fun bind(call: RecentCall) = bindView(
             item = call,
-            allowSingleClick = refreshItemsListener != null && !call.isUnknownNumber,
+            allowSingleClick = false,
             allowLongClick = refreshItemsListener != null && !call.isUnknownNumber
         ) { _, _ ->
             binding.apply {
@@ -605,6 +605,15 @@ class RecentCallsAdapter(
                 }
 
                 itemRecentsType.setImageDrawable(drawable)
+
+                itemRecentsCallButton.setImageDrawable(resources.getDrawable(R.drawable.ic_call_green_button))
+                itemRecentsCallButton.setOnClickListener {
+                    if (actModeCallback.isSelectable) {
+                        viewClicked(call)
+                    } else {
+                        (activity as SimpleActivity).startCallWithConfirmationCheck(call.phoneNumber, call.name)
+                    }
+                }
 
                 overflowMenuIcon.beVisibleIf(showOverflowMenu)
                 overflowMenuIcon.drawable.apply {
