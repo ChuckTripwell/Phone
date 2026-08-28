@@ -41,4 +41,11 @@
 
     <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
     <dimen name="bottom_nav_min_height">52dp</dimen>
+
+    <!-- contacts rows: roomier, less claustrophobic (overrides commons one_line/vertical/horizontal) -->
+    <dimen name="contact_row_min_height">66dp</dimen>
+    <dimen name="contact_row_padding_vertical">12dp</dimen>
+    <dimen name="contact_row_padding_horizontal">20dp</dimen>
+    <dimen name="contact_row_gap">4dp</dimen>
+    <dimen name="contact_name_margin">12dp</dimen>
 </resources>

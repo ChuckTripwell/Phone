@@ -377,6 +377,12 @@ class ContactsAdapter(
         if (!activity.isDestroyed && !activity.isFinishing) {
             Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
                 Glide.with(activity).clear(itemContactImage)
+                itemContactFrame.findViewById<View>(R.id.contact_star_button)?.let { starButton ->
+                    (starButton.getTag(R.id.contact_star_button) as? Runnable)?.let {
+                        starButton.removeCallbacks(it)
+                    }
+                    starButton.setTag(R.id.contact_star_button, null)
+                }
             }
         }
     }
@@ -550,13 +556,19 @@ class ContactsAdapter(
         starButton.setImageDrawable(
             ContextCompat.getDrawable(
                 activity,
-                if (contact.starred == 1) R.drawable.ic_star_handle_gold else R.drawable.ic_star_outline_gold
+                if (contact.starred == 1) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
             )
         )
 
         val isFavorite = contact.starred == 1
         if (isFavorite) {
             starButton.setOnClickListener(null)
+            val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+            var longPressed = false
+            val longPressRunnable = Runnable {
+                longPressed = true
+                holder.viewLongClicked()
+            }
             starButton.setOnTouchListener { v, event ->
                 if (actModeCallback.isSelectable) {
                     v.performClick()
@@ -568,6 +580,7 @@ class ContactsAdapter(
                 var downTime = 0L
                 var dragged = false
                 val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
+                v.setTag(R.id.contact_star_button, longPressRunnable)
 
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
@@ -575,26 +588,36 @@ class ContactsAdapter(
                         downY = event.y
                         downTime = event.eventTime
                         dragged = false
+                        longPressed = false
+                        v.removeCallbacks(longPressRunnable)
+                        v.postDelayed(longPressRunnable, longPressTimeout)
                         true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         if (kotlin.math.hypot(event.x - downX, event.y - downY) > touchSlop) {
                             dragged = true
+                            v.removeCallbacks(longPressRunnable)
                             startReorderDragListener?.requestDrag(holder)
                         }
                         true
                     }
                     MotionEvent.ACTION_UP -> {
-                        if (!dragged && (event.eventTime - downTime) < ViewConfiguration.getLongPressTimeout()) {
+                        v.removeCallbacks(longPressRunnable)
+                        if (!dragged && !longPressed && (event.eventTime - downTime) < longPressTimeout) {
                             ContactsHelper(activity).removeFavorites(arrayListOf(contact))
                             refreshItemsListener?.refreshItems()
                         }
                         v.performClick()
                         true
                     }
+                    MotionEvent.ACTION_CANCEL -> {
+                        v.removeCallbacks(longPressRunnable)
+                        true
+                    }
                     else -> true
                 }
             }
+
         } else {
             starButton.setOnTouchListener(null)
             starButton.setOnClickListener {
