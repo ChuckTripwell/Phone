@@ -2399,7 +2399,7 @@ index 2a4f7ca9..11adc4e6 100644
              android:layout_width="match_parent"
 diff --git a/app/src/main/res/layout/fragment_dialpad.xml b/app/src/main/res/layout/fragment_dialpad.xml
 new file mode 100644
-index 00000000..818742f1
+index 00000000..8fc76ae9
 --- /dev/null
 +++ b/app/src/main/res/layout/fragment_dialpad.xml
 @@ -0,0 +1,105 @@
@@ -2463,7 +2463,7 @@ index 00000000..818742f1
 +        android:layout_width="match_parent"
 +        android:layout_height="wrap_content"
 +        android:layout_above="@+id/dialpad_wrapper"
-+        android:layout_marginStart="64dp"
++        android:layout_marginStart="@dimen/activity_margin"
 +        android:layout_marginEnd="@dimen/activity_margin"
 +        android:gravity="center"
 +        android:inputType="phone"
@@ -2475,10 +2475,10 @@ index 00000000..818742f1
 +        android:id="@+id/dialpad_clear_char"
 +        android:layout_width="@dimen/normal_icon_size"
 +        android:layout_height="@dimen/normal_icon_size"
-+        android:layout_alignParentEnd="true"
++        android:layout_alignParentStart="true"
 +        android:layout_alignTop="@+id/dialpad_input"
 +        android:layout_alignBottom="@+id/dialpad_input"
-+        android:layout_marginEnd="@dimen/activity_margin"
++        android:layout_marginStart="@dimen/activity_margin"
 +        android:background="?attr/selectableItemBackgroundBorderless"
 +        android:layoutDirection="ltr"
 +        android:paddingStart="@dimen/medium_margin"
