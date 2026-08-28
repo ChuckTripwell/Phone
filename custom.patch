@@ -1,5 +1,5 @@
 diff --git a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
-index c56a57bb..f234908d 100644
+index c56a57bb..0ce10b1d 100644
 --- a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
 @@ -6,6 +6,7 @@ import android.content.Context
@@ -27,7 +27,7 @@ index c56a57bb..f234908d 100644
          initButtons()
          audioManager.mode = AudioManager.MODE_IN_CALL
          addLockScreenFlags()
-@@ -564,10 +568,57 @@ class CallActivity : SimpleActivity() {
+@@ -564,10 +568,48 @@ class CallActivity : SimpleActivity() {
          }
      }
  
@@ -41,16 +41,7 @@ index c56a57bb..f234908d 100644
 +    }
 +
 +    private fun getHebrewFontTypeface(): Typeface {
-+        return when (config.hebrewFontType) {
-+            1 -> Typeface.create(Typeface.SERIF, Typeface.NORMAL)
-+            2 -> Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-+            3 -> if (config.hebrewFontFile.isEmpty()) {
-+                Typeface.DEFAULT
-+            } else {
-+                FontHelper.getTypeface(this, 2, config.hebrewFontFile)
-+            }
-+            else -> Typeface.DEFAULT
-+        }
++        return HebrewFontHelper.getHebrewTypeface(this)
 +    }
 +
 +    private fun setupCallBackgroundGif() {
@@ -555,7 +546,7 @@ index 75f340ca..45cad9da 100644
                  if (binding.mainMenu.isSearchOpen) {
                      getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
 diff --git a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
-index a2c0bdb3..df09076f 100644
+index a2c0bdb3..6bfbe2f0 100644
 --- a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
 @@ -1,6 +1,7 @@
@@ -643,7 +634,7 @@ index a2c0bdb3..df09076f 100644
          setupManageShownTabs()
          setupDefaultTab()
          setupOnContactClick()
-@@ -229,6 +257,163 @@ class SettingsActivity : SimpleActivity() {
+@@ -229,6 +257,164 @@ class SettingsActivity : SimpleActivity() {
          }
      }
  
@@ -722,7 +713,8 @@ index a2c0bdb3..df09076f 100644
 +        binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
 +        binding.settingsCallBackgroundGifHolder.setOnClickListener {
 +            val items = arrayListOf(
-+                RadioItem(0, getString(R.string.gif_none))
++                RadioItem(0, getString(R.string.gif_none)),
++                RadioItem(1, getString(R.string.select_gif))
 +            )
 +            RadioGroupDialog(this@SettingsActivity, items, if (config.callBackgroundGif.isEmpty()) 0 else 1) { newValue ->
 +                val selected = newValue as Int
@@ -739,7 +731,7 @@ index a2c0bdb3..df09076f 100644
 +        return if (config.callBackgroundGif.isEmpty()) {
 +            getString(R.string.gif_none)
 +        } else {
-+            File(config.callBackgroundGif).name
++            "${getString(R.string.gif_picked)}  ${File(config.callBackgroundGif).name}"
 +        }
 +    }
 +
@@ -807,7 +799,7 @@ index a2c0bdb3..df09076f 100644
      private fun setupManageShownTabs() {
          binding.settingsManageTabsHolder.setOnClickListener {
              ManageVisibleTabsDialog(this)
-@@ -240,7 +425,6 @@ class SettingsActivity : SimpleActivity() {
+@@ -240,7 +426,6 @@ class SettingsActivity : SimpleActivity() {
          binding.settingsDefaultTabHolder.setOnClickListener {
              val items = arrayListOf(
                  RadioItem(TAB_CONTACTS, getString(R.string.contacts_tab)),
@@ -815,7 +807,7 @@ index a2c0bdb3..df09076f 100644
                  RadioItem(TAB_CALL_HISTORY, getString(R.string.call_history_tab)),
                  RadioItem(TAB_LAST_USED, getString(R.string.last_used_tab))
              )
-@@ -255,7 +439,6 @@ class SettingsActivity : SimpleActivity() {
+@@ -255,7 +440,6 @@ class SettingsActivity : SimpleActivity() {
      private fun getDefaultTabText() = getString(
          when (baseConfig.defaultTab) {
              TAB_CONTACTS -> R.string.contacts_tab
@@ -824,7 +816,7 @@ index a2c0bdb3..df09076f 100644
              else -> R.string.last_used_tab
          }
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
-index fb6827ce..115bf91f 100644
+index fb6827ce..d728b9ba 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 @@ -3,6 +3,7 @@ package org.fossify.phone.adapters
@@ -850,7 +842,15 @@ index fb6827ce..115bf91f 100644
  import org.fossify.commons.adapters.MyRecyclerViewAdapter
  import org.fossify.commons.databinding.ItemContactWithoutNumberBinding
  import org.fossify.commons.databinding.ItemContactWithoutNumberGridBinding
-@@ -59,13 +63,8 @@ class ContactsAdapter(
+@@ -30,6 +34,7 @@ import org.fossify.commons.models.contacts.Contact
+ import org.fossify.commons.views.MyRecyclerView
+ import org.fossify.phone.R
+ import org.fossify.phone.activities.SimpleActivity
++import org.fossify.phone.helpers.HebrewFontHelper
+ import org.fossify.phone.extensions.areMultipleSIMsAvailable
+ import org.fossify.phone.extensions.callContactWithSim
+ import org.fossify.phone.extensions.config
+@@ -59,13 +64,8 @@ class ContactsAdapter(
      var onDragEndListener: (() -> Unit)? = null
      var onSpanCountListener: (Int) -> Unit = {}
  
@@ -865,7 +865,7 @@ index fb6827ce..115bf91f 100644
  
          if (enableDrag) {
              touchHelper = ItemTouchHelper(ItemMoveCallback(this, viewType == VIEW_TYPE_GRID))
-@@ -91,6 +90,12 @@ class ContactsAdapter(
+@@ -91,6 +91,12 @@ class ContactsAdapter(
              findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
              findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
  
@@ -878,7 +878,7 @@ index fb6827ce..115bf91f 100644
              findItem(R.id.cab_delete).isVisible = showDeleteButton
              findItem(R.id.cab_create_shortcut).title = activity.addLockedLabelIfNeeded(R.string.create_shortcut)
              findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected && isOreoPlus()
-@@ -115,6 +120,7 @@ class ContactsAdapter(
+@@ -115,6 +121,7 @@ class ContactsAdapter(
              R.id.cab_delete -> askConfirmDelete()
              R.id.cab_send_sms -> sendSMS()
              R.id.cab_view_details -> viewContactDetails()
@@ -886,7 +886,15 @@ index fb6827ce..115bf91f 100644
              R.id.cab_create_shortcut -> tryCreateShortcut()
              R.id.cab_select_all -> selectAll()
          }
-@@ -312,6 +318,22 @@ class ContactsAdapter(
+@@ -152,6 +159,7 @@ class ContactsAdapter(
+         holder.bindView(contact, true, allowLongClick) { itemView, _ ->
+             val viewType = getItemViewType(position)
+             setupView(Binding.getByItemViewType(viewType).bind(itemView), contact, holder)
++            HebrewFontHelper.applyHebrewFontToHierarchy(itemView, activity)
+         }
+         bindViewHolder(holder)
+     }
+@@ -312,6 +320,22 @@ class ContactsAdapter(
  
      private fun getSelectedItems() = contacts.filter { selectedKeys.contains(it.rawId) } as ArrayList<Contact>
  
@@ -909,7 +917,7 @@ index fb6827ce..115bf91f 100644
      private fun getSelectedPhoneNumber(): String? {
          return getSelectedItems().firstOrNull()?.getPrimaryNumber()
      }
-@@ -355,10 +377,20 @@ class ContactsAdapter(
+@@ -355,10 +379,20 @@ class ContactsAdapter(
          if (!activity.isDestroyed && !activity.isFinishing) {
              Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
                  Glide.with(activity).clear(itemContactImage)
@@ -930,7 +938,7 @@ index fb6827ce..115bf91f 100644
      @SuppressLint("ClickableViewAccessibility")
      private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
          binding.apply {
-@@ -367,7 +399,7 @@ class ContactsAdapter(
+@@ -367,7 +401,7 @@ class ContactsAdapter(
  
              itemContactImage.apply {
                  if (profileIconClick != null && viewType != VIEW_TYPE_GRID) {
@@ -939,7 +947,7 @@ index fb6827ce..115bf91f 100644
  
                      setOnClickListener {
                          if (!actModeCallback.isSelectable) {
-@@ -376,7 +408,7 @@ class ContactsAdapter(
+@@ -376,7 +410,7 @@ class ContactsAdapter(
                              holder.viewClicked(contact)
                          }
                      }
@@ -948,7 +956,7 @@ index fb6827ce..115bf91f 100644
                          holder.viewLongClicked()
                          true
                      }
-@@ -384,7 +416,13 @@ class ContactsAdapter(
+@@ -384,7 +418,13 @@ class ContactsAdapter(
              }
  
              itemContactName.apply {
@@ -963,7 +971,7 @@ index fb6827ce..115bf91f 100644
                  setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
  
                  val name = contact.getNameToDisplay()
-@@ -414,26 +452,179 @@ class ContactsAdapter(
+@@ -414,26 +454,179 @@ class ContactsAdapter(
                  }
              }
  
@@ -1157,7 +1165,7 @@ index fb6827ce..115bf91f 100644
              }
          }
      }
-@@ -441,17 +632,30 @@ class ContactsAdapter(
+@@ -441,17 +634,30 @@ class ContactsAdapter(
      override fun onRowMoved(fromPosition: Int, toPosition: Int) {
          activity.config.isCustomOrderSelected = true
  
@@ -1248,10 +1256,18 @@ index 00000000..df40a019
 +    }
 +}
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
-index 67c57460..80cd7427 100644
+index 67c57460..afeb69ee 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
-@@ -465,7 +465,7 @@ class RecentCallsAdapter(
+@@ -61,6 +61,7 @@ import org.fossify.phone.extensions.getDayCode
+ import org.fossify.phone.extensions.startAddContactIntent
+ import org.fossify.phone.extensions.startCallWithConfirmationCheck
+ import org.fossify.phone.extensions.startContactDetailsIntent
++import org.fossify.phone.helpers.HebrewFontHelper
+ import org.fossify.phone.helpers.RecentsHelper
+ import org.fossify.phone.interfaces.RefreshItemsListener
+ import org.fossify.phone.models.CallLogItem
+@@ -465,7 +466,7 @@ class RecentCallsAdapter(
      private inner class RecentCallViewHolder(val binding: ItemRecentCallBinding) : ViewHolder(binding.root) {
          fun bind(call: RecentCall) = bindView(
              item = call,
@@ -1260,7 +1276,7 @@ index 67c57460..80cd7427 100644
              allowLongClick = refreshItemsListener != null && !call.isUnknownNumber
          ) { _, _ ->
              binding.apply {
-@@ -511,7 +511,6 @@ class RecentCallsAdapter(
+@@ -511,7 +512,6 @@ class RecentCallsAdapter(
                      text = nameToShow
                      setTextColor(textColor)
                      setTextSize(TypedValue.COMPLEX_UNIT_PX, currentFontSize)
@@ -1268,7 +1284,7 @@ index 67c57460..80cd7427 100644
                  }
  
                  itemRecentsDateTime.apply {
-@@ -606,6 +605,15 @@ class RecentCallsAdapter(
+@@ -606,6 +606,15 @@ class RecentCallsAdapter(
  
                  itemRecentsType.setImageDrawable(drawable)
  
@@ -1284,6 +1300,15 @@ index 67c57460..80cd7427 100644
                  overflowMenuIcon.beVisibleIf(showOverflowMenu)
                  overflowMenuIcon.drawable.apply {
                      mutate()
+@@ -615,6 +624,8 @@ class RecentCallsAdapter(
+                 overflowMenuIcon.setOnClickListener {
+                     showPopupMenu(overflowMenuAnchor, call)
+                 }
++
++                HebrewFontHelper.applyHebrewFontToHierarchy(root, activity)
+             }
+         }
+     }
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt
 index ef3f5c4c..c584a590 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt
@@ -1543,10 +1568,10 @@ index 9a26a05f..8378dc1c 100644
      override fun onSearchClosed() {
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt
 new file mode 100644
-index 00000000..50efcaed
+index 00000000..0ca19ff2
 --- /dev/null
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt
-@@ -0,0 +1,412 @@
+@@ -0,0 +1,429 @@
 +package org.fossify.phone.fragments
 +
 +import android.annotation.SuppressLint
@@ -1754,7 +1779,7 @@ index 00000000..50efcaed
 +            letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
 +            letterFastscroller.pressedTextColor = properPrimaryColor
 +            dialpadClearChar.applyColorFilter(act.getProperTextColor())
-+            dialpadInput.setTextColor(properPrimaryColor)
++            dialpadInput.setTextColor(android.graphics.Color.BLACK)
 +        }
 +    }
 +
@@ -1915,23 +1940,20 @@ index 00000000..50efcaed
 +    private fun setupCharClick(view: View, char: Char, longClickable: Boolean = true) {
 +        view.isClickable = true
 +        view.isLongClickable = true
++        val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
++        var downX = -1f
++        var downY = -1f
 +        view.setOnTouchListener { _, event ->
 +            when (event.action) {
 +                MotionEvent.ACTION_DOWN -> {
-+                    dialpadPressed(char, view)
++                    downX = event.x
++                    downY = event.y
 +                    startDialpadTone(char)
 +                    if (longClickable) {
 +                        longPressHandler.removeCallbacksAndMessages(null)
 +                        longPressHandler.postDelayed({
 +                            performLongClick(view, char)
 +                        }, longPressTimeout)
-+                    }
-+                }
-+
-+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-+                    stopDialpadTone(char)
-+                    if (longClickable) {
-+                        longPressHandler.removeCallbacksAndMessages(null)
 +                    }
 +                }
 +
@@ -1942,11 +1964,31 @@ index 00000000..50efcaed
 +                        view.boundingBox.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
 +                    }
 +
-+                    if (!viewContainsTouchEvent) {
++                    val movedBeyondSlop = downX != -1f && (Math.abs(event.x - downX) > touchSlop || Math.abs(event.y - downY) > touchSlop)
++                    if (!viewContainsTouchEvent || movedBeyondSlop) {
 +                        stopDialpadTone(char)
 +                        if (longClickable) {
 +                            longPressHandler.removeCallbacksAndMessages(null)
 +                        }
++                    }
++                }
++
++                MotionEvent.ACTION_UP -> {
++                    val viewContainsTouchEvent = view.boundingBox.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
++                    val movedBeyondSlop = downX != -1f && (Math.abs(event.x - downX) > touchSlop || Math.abs(event.y - downY) > touchSlop)
++                    if (viewContainsTouchEvent && !movedBeyondSlop) {
++                        dialpadPressed(char, view)
++                    }
++                    stopDialpadTone(char)
++                    if (longClickable) {
++                        longPressHandler.removeCallbacksAndMessages(null)
++                    }
++                }
++
++                MotionEvent.ACTION_CANCEL -> {
++                    stopDialpadTone(char)
++                    if (longClickable) {
++                        longPressHandler.removeCallbacksAndMessages(null)
 +                    }
 +                }
 +            }
@@ -2037,6 +2079,59 @@ index 754151c8..4ca09aec 100644
  
  private const val PATH = "org.fossify.phone.action."
  const val ACCEPT_CALL = PATH + "ACCEPT_CALL"
+diff --git a/app/src/main/kotlin/org/fossify/phone/helpers/HebrewFontHelper.kt b/app/src/main/kotlin/org/fossify/phone/helpers/HebrewFontHelper.kt
+new file mode 100644
+index 00000000..f2fdf0b9
+--- /dev/null
++++ b/app/src/main/kotlin/org/fossify/phone/helpers/HebrewFontHelper.kt
+@@ -0,0 +1,47 @@
++package org.fossify.phone.helpers
++
++import android.content.Context
++import android.graphics.Typeface
++import android.view.View
++import android.view.ViewGroup
++import android.widget.TextView
++import org.fossify.commons.helpers.FontHelper
++import org.fossify.phone.extensions.config
++
++object HebrewFontHelper {
++
++    private val hebrewRegex = Regex("[\u0590-\u05FF\uFB1D-\uFDFF\uFE70-\uFEFF]")
++
++    fun getHebrewTypeface(context: Context): Typeface {
++        return when (context.config.hebrewFontType) {
++            1 -> Typeface.create(Typeface.SERIF, Typeface.NORMAL)
++            2 -> Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
++            3 -> if (context.config.hebrewFontFile.isEmpty()) {
++                Typeface.DEFAULT
++            } else {
++                FontHelper.getTypeface(context, 2, context.config.hebrewFontFile)
++            }
++            else -> Typeface.DEFAULT
++        }
++    }
++
++    fun applyHebrewFontToHierarchy(root: View?, context: Context) {
++        if (root == null) return
++        if (context.config.hebrewFontType == 0) return
++
++        val typeface = getHebrewTypeface(context)
++
++        fun visit(view: View) {
++            if (view is TextView && !view.typeface.isBold && hebrewRegex.containsMatchIn(view.text.toString())) {
++                view.typeface = typeface
++            }
++            if (view is ViewGroup) {
++                for (i in 0 until view.childCount) {
++                    visit(view.getChildAt(i))
++                }
++            }
++        }
++
++        visit(root)
++    }
++}
 diff --git a/app/src/main/res/drawable/call_button_background_green.xml b/app/src/main/res/drawable/call_button_background_green.xml
 new file mode 100644
 index 00000000..0b1b4a35
@@ -2405,6 +2500,31 @@ index 2a4f7ca9..11adc4e6 100644
          <org.fossify.commons.views.MyAppCompatCheckbox
              android:id="@+id/manage_visible_tabs_call_history"
              android:layout_width="match_parent"
+diff --git a/app/src/main/res/layout/dialpad.xml b/app/src/main/res/layout/dialpad.xml
+index b47e72d2..d8e5762d 100644
+--- a/app/src/main/res/layout/dialpad.xml
++++ b/app/src/main/res/layout/dialpad.xml
+@@ -269,8 +269,19 @@
+             style="@style/DialpadNumberStyle"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+-            android:layout_centerInParent="true"
++            android:layout_alignParentTop="true"
++            android:layout_centerHorizontal="true"
+             android:text="*" />
++
++        <org.fossify.commons.views.MyTextView
++            android:id="@+id/dialpad_asterisk_letters"
++            style="@style/DialpadLetterStyle"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_below="@+id/dialpad_asterisk"
++            android:layout_centerHorizontal="true"
++            android:layout_marginBottom="@dimen/small_margin"
++            android:text="=" />
+     </RelativeLayout>
+ 
+     <RelativeLayout
 diff --git a/app/src/main/res/layout/fragment_dialpad.xml b/app/src/main/res/layout/fragment_dialpad.xml
 new file mode 100644
 index 00000000..8fc76ae9
@@ -2517,7 +2637,7 @@ index 00000000..8fc76ae9
 +
 +</org.fossify.phone.fragments.DialpadFragment>
 diff --git a/app/src/main/res/layout/fragment_letters_layout.xml b/app/src/main/res/layout/fragment_letters_layout.xml
-index 11eb57e8..1d2c2e58 100644
+index 11eb57e8..1672fc3b 100644
 --- a/app/src/main/res/layout/fragment_letters_layout.xml
 +++ b/app/src/main/res/layout/fragment_letters_layout.xml
 @@ -5,7 +5,7 @@
@@ -2542,7 +2662,7 @@ index 11eb57e8..1d2c2e58 100644
              android:layout_width="32dp"
 -            android:layout_height="wrap_content"
 -            android:layout_alignParentEnd="true"
-+            android:layout_height="@dimen/fast_scroller_height"
++            android:layout_height="match_parent"
 +            android:layout_alignParentTop="true"
 +            android:layout_alignParentStart="true"
              android:paddingTop="@dimen/big_margin"
@@ -2624,10 +2744,19 @@ index 00000000..c2b7e7da
 +
 +</androidx.constraintlayout.widget.ConstraintLayout>
 diff --git a/app/src/main/res/layout/item_recent_call.xml b/app/src/main/res/layout/item_recent_call.xml
-index d0a6d55b..2e56f710 100644
+index d0a6d55b..fcf06e46 100644
 --- a/app/src/main/res/layout/item_recent_call.xml
 +++ b/app/src/main/res/layout/item_recent_call.xml
-@@ -29,16 +29,14 @@
+@@ -5,8 +5,6 @@
+     android:id="@+id/item_recents_holder"
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
+-    android:clickable="true"
+-    android:focusable="true"
+     android:paddingTop="@dimen/medium_margin"
+     android:paddingBottom="@dimen/medium_margin">
+ 
+@@ -29,16 +27,14 @@
          android:layout_height="wrap_content"
          android:layout_marginStart="@dimen/small_margin"
          android:layout_marginEnd="@dimen/small_margin"
@@ -2646,7 +2775,7 @@ index d0a6d55b..2e56f710 100644
          app:layout_constraintStart_toEndOf="@+id/item_recents_image"
          app:layout_constraintTop_toTopOf="parent"
          app:layout_constraintVertical_chainStyle="spread_inside"
-@@ -141,11 +139,24 @@
+@@ -141,11 +137,24 @@
          android:maxLines="1"
          android:textSize="@dimen/normal_text_size"
          app:layout_constraintBottom_toBottomOf="@id/item_recents_date_time"
@@ -2761,10 +2890,10 @@ index ce9da31b..28e9cf41 100644
 +    <color name="default_text_color">#FF000000</color>
  </resources>
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
-index dacf1a28..61b73a9e 100644
+index dacf1a28..8a7cf4bd 100644
 --- a/app/src/main/res/values/dimens.xml
 +++ b/app/src/main/res/values/dimens.xml
-@@ -12,10 +12,43 @@
+@@ -12,10 +12,40 @@
      <dimen name="call_control_button_size">72dp</dimen>
      <dimen name="recyclerview_fab_padding">100dp</dimen>
  
@@ -2795,9 +2924,6 @@ index dacf1a28..61b73a9e 100644
 +    <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
 +    <dimen name="fast_scroller_letter_size">13sp</dimen>
 +
-+    <!-- fast scroller strip height (kept short so the side letters are a small line, not a full column) -->
-+    <dimen name="fast_scroller_height">72dp</dimen>
-+
 +    <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
 +    <dimen name="bottom_nav_min_height">52dp</dimen>
 +
@@ -2820,10 +2946,10 @@ index 00000000..d47f5823
 +    <item name="contact_star_button" type="id" />
 +</resources>
 diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
-index 1fa84f2b..d86133b2 100644
+index 1fa84f2b..46d7c460 100644
 --- a/app/src/main/res/values/strings.xml
 +++ b/app/src/main/res/values/strings.xml
-@@ -83,6 +83,16 @@
+@@ -83,6 +83,17 @@
      <string name="export_call_history">Export call history</string>
      <string name="import_call_history">Import call history</string>
      <string name="calling_accounts">Calling accounts</string>
@@ -2834,6 +2960,7 @@ index 1fa84f2b..d86133b2 100644
 +    <string name="gif_none">None</string>
 +    <string name="invalid_gif_file">Invalid GIF file</string>
 +    <string name="clear_gif">Remove GIF</string>
++    <string name="gif_picked">✓ GIF picked</string>
 +    <string name="saved">Saved</string>
 +    <string name="font_serif">Serif</string>
 +    <string name="font_monospace">Monospace</string>
@@ -2841,10 +2968,22 @@ index 1fa84f2b..d86133b2 100644
      <!-- FAQ -->
      <string name="faq_1_title">I hear incoming calls, but the screen doesn\'t turn on. What can I do?</string>
 diff --git a/app/src/main/res/values/styles.xml b/app/src/main/res/values/styles.xml
-index e5e257a8..5b210927 100644
+index e5e257a8..13e15721 100644
 --- a/app/src/main/res/values/styles.xml
 +++ b/app/src/main/res/values/styles.xml
-@@ -21,4 +21,8 @@
+@@ -11,14 +11,20 @@
+ 
+     <style name="DialpadNumberStyle">
+         <item name="android:includeFontPadding">false</item>
++        <item name="android:textColor">@android:color/black</item>
+         <item name="android:textSize">@dimen/dialpad_text_size</item>
+         <item name="android:layout_centerHorizontal">true</item>
+     </style>
+ 
+     <style name="DialpadLetterStyle">
++        <item name="android:textColor">@android:color/black</item>
+         <item name="android:textSize">@dimen/dialpad_letters_text_size</item>
+         <item name="android:alpha">0.8</item>
          <item name="android:layout_centerHorizontal">true</item>
      </style>
  
