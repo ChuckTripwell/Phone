@@ -137,11 +137,11 @@ class CallActivity : SimpleActivity() {
             callRightArrow.beGone()
 
             callDecline.setOnClickListener {
-                endCall()
+                acceptCall()
             }
 
             callAccept.setOnClickListener {
-                acceptCall()
+                endCall()
             }
         } else {
             handleSwipe()
@@ -322,8 +322,8 @@ class CallActivity : SimpleActivity() {
                 callRightArrow.setImageResource(R.drawable.ic_chevron_left_vector)
             }
 
-            callLeftArrow.applyColorFilter(getColor(R.color.md_red_400))
-            callRightArrow.applyColorFilter(getColor(R.color.md_green_400))
+            callLeftArrow.applyColorFilter(getColor(R.color.md_green_400))
+            callRightArrow.applyColorFilter(getColor(R.color.md_red_400))
 
             startArrowAnimation(callLeftArrow, initialLeftArrowX, initialLeftArrowScaleX, initialLeftArrowScaleY, leftArrowTranslation)
             startArrowAnimation(callRightArrow, initialRightArrowX, initialRightArrowScaleX, initialRightArrowScaleY, rightArrowTranslation)
@@ -366,9 +366,9 @@ class CallActivity : SimpleActivity() {
                                 lock = true
                                 callDraggable.performHapticFeedback()
                                 if (isRtl) {
-                                    endCall()
-                                } else {
                                     acceptCall()
+                                } else {
+                                    endCall()
                                 }
                             }
                         }
@@ -378,9 +378,9 @@ class CallActivity : SimpleActivity() {
                                 lock = true
                                 callDraggable.performHapticFeedback()
                                 if (isRtl) {
-                                    acceptCall()
-                                } else {
                                     endCall()
+                                } else {
+                                    acceptCall()
                                 }
                             }
                         }
@@ -388,9 +388,9 @@ class CallActivity : SimpleActivity() {
                         callDraggable.x > initialDraggableX -> {
                             lock = false
                             val drawableRes = if (isRtl) {
-                                R.drawable.ic_phone_down_red_vector
-                            } else {
                                 R.drawable.ic_phone_green_vector
+                            } else {
+                                R.drawable.ic_phone_down_red_vector
                             }
                             callDraggable.setImageDrawable(getDrawable(drawableRes))
                         }
@@ -398,9 +398,9 @@ class CallActivity : SimpleActivity() {
                         callDraggable.x <= initialDraggableX -> {
                             lock = false
                             val drawableRes = if (isRtl) {
-                                R.drawable.ic_phone_green_vector
-                            } else {
                                 R.drawable.ic_phone_down_red_vector
+                            } else {
+                                R.drawable.ic_phone_green_vector
                             }
                             callDraggable.setImageDrawable(getDrawable(drawableRes))
                         }
@@ -684,7 +684,7 @@ class CallActivity : SimpleActivity() {
                         val rippleBg = resources.getDrawable(R.drawable.ic_call_accept, theme) as RippleDrawable
                         val layerDrawable = rippleBg.findDrawableByLayerId(R.id.accept_call_background_holder) as LayerDrawable
                         layerDrawable.setDrawableByLayerId(R.id.accept_call_icon, getDrawable(acceptDrawableId))
-                        binding.callAccept.setImageDrawable(rippleBg)
+                        binding.callDecline.setImageDrawable(rippleBg)
                     }
                 }
             }
