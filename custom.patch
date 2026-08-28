@@ -1506,10 +1506,10 @@ index 9a26a05f..bfb992ab 100644
      override fun onSearchClosed() {
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt
 new file mode 100644
-index 00000000..3f200e26
+index 00000000..50efcaed
 --- /dev/null
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/DialpadFragment.kt
-@@ -0,0 +1,408 @@
+@@ -0,0 +1,412 @@
 +package org.fossify.phone.fragments
 +
 +import android.annotation.SuppressLint
@@ -1713,8 +1713,12 @@ index 00000000..3f200e26
 +
 +    override fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int) {
 +        val act = activity as? SimpleActivity ?: return
-+        binding.letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
-+        binding.letterFastscroller.pressedTextColor = properPrimaryColor
++        binding.apply {
++            letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
++            letterFastscroller.pressedTextColor = properPrimaryColor
++            dialpadClearChar.applyColorFilter(act.getProperTextColor())
++            dialpadInput.setTextColor(properPrimaryColor)
++        }
 +    }
 +
 +    override fun onSearchClosed() {
@@ -2670,7 +2674,7 @@ index ce9da31b..28e9cf41 100644
 +    <color name="default_text_color">#FF000000</color>
  </resources>
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
-index dacf1a28..e5c45d84 100644
+index dacf1a28..8a7cf4bd 100644
 --- a/app/src/main/res/values/dimens.xml
 +++ b/app/src/main/res/values/dimens.xml
 @@ -12,10 +12,40 @@
@@ -2701,8 +2705,8 @@ index dacf1a28..e5c45d84 100644
      <dimen name="dialpad_text_size">28dp</dimen>
      <dimen name="dialpad_letters_text_size">12dp</dimen>
 +
-+    <!-- fast scroller letter size (shrunk so they fit on narrow screens) -->
-+    <dimen name="fast_scroller_letter_size">9sp</dimen>
++    <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
++    <dimen name="fast_scroller_letter_size">13sp</dimen>
 +
 +    <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
 +    <dimen name="bottom_nav_min_height">52dp</dimen>
