@@ -201,8 +201,12 @@ class DialpadFragment(
 
     override fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int) {
         val act = activity as? SimpleActivity ?: return
-        binding.letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
-        binding.letterFastscroller.pressedTextColor = properPrimaryColor
+        binding.apply {
+            letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
+            letterFastscroller.pressedTextColor = properPrimaryColor
+            dialpadClearChar.applyColorFilter(act.getProperTextColor())
+            dialpadInput.setTextColor(properPrimaryColor)
+        }
     }
 
     override fun onSearchClosed() {

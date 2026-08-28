@@ -36,8 +36,8 @@
     <dimen name="dialpad_text_size">28dp</dimen>
     <dimen name="dialpad_letters_text_size">12dp</dimen>
 
-    <!-- fast scroller letter size (shrunk so they fit on narrow screens) -->
-    <dimen name="fast_scroller_letter_size">9sp</dimen>
+    <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
+    <dimen name="fast_scroller_letter_size">13sp</dimen>
 
     <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
     <dimen name="bottom_nav_min_height">52dp</dimen>
