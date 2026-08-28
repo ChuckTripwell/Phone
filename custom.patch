@@ -1,5 +1,5 @@
 diff --git a/app/src/main/kotlin/org/fossify/phone/activities/DialpadActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/DialpadActivity.kt
-index 6e35418c..1190833d 100644
+index 6e35418c..33e6503b 100644
 --- a/app/src/main/kotlin/org/fossify/phone/activities/DialpadActivity.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/activities/DialpadActivity.kt
 @@ -14,15 +14,20 @@ import android.view.KeyEvent
@@ -36,7 +36,7 @@ index 6e35418c..1190833d 100644
          binding.apply {
              setupEdgeToEdge(
 -                padBottomImeAndSystem = listOf(dialpadList, dialpadHolder)
-+                padBottomImeAndSystem = listOf(dialpadList, dialpadHolder, dialpadBottomBar)
++                padBottomImeAndSystem = listOf(dialpadHolder)
              )
              setupMaterialScrollListener(binding.dialpadList, binding.dialpadAppbar)
 +            setupBottomBar()
@@ -619,7 +619,7 @@ index a2c0bdb3..8e2bd048 100644
              else -> R.string.last_used_tab
          }
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
-index fb6827ce..e5c759e9 100644
+index fb6827ce..fda5067c 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 @@ -3,6 +3,7 @@ package org.fossify.phone.adapters
@@ -748,7 +748,7 @@ index fb6827ce..e5c759e9 100644
                  setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
  
                  val name = contact.getNameToDisplay()
-@@ -414,26 +446,130 @@ class ContactsAdapter(
+@@ -414,26 +446,162 @@ class ContactsAdapter(
                  }
              }
  
@@ -878,11 +878,43 @@ index fb6827ce..e5c759e9 100644
 +        val isFavorite = contact.starred == 1
 +        if (isFavorite) {
 +            starButton.setOnClickListener(null)
-+            starButton.setOnTouchListener { _, event ->
-+                if (event.actionMasked == MotionEvent.ACTION_DOWN && !actModeCallback.isSelectable) {
-+                    startReorderDragListener?.requestDrag(holder)
++            starButton.setOnTouchListener { v, event ->
++                if (actModeCallback.isSelectable) {
++                    v.performClick()
++                    return@setOnTouchListener true
 +                }
-+                false
++
++                var downX = 0f
++                var downY = 0f
++                var downTime = 0L
++                var dragged = false
++                val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
++
++                when (event.actionMasked) {
++                    MotionEvent.ACTION_DOWN -> {
++                        downX = event.x
++                        downY = event.y
++                        downTime = event.eventTime
++                        dragged = false
++                        true
++                    }
++                    MotionEvent.ACTION_MOVE -> {
++                        if (kotlin.math.hypot(event.x - downX, event.y - downY) > touchSlop) {
++                            dragged = true
++                            startReorderDragListener?.requestDrag(holder)
++                        }
++                        true
++                    }
++                    MotionEvent.ACTION_UP -> {
++                        if (!dragged && (event.eventTime - downTime) < ViewConfiguration.getLongPressTimeout()) {
++                            ContactsHelper(activity).removeFavorites(arrayListOf(contact))
++                            refreshItemsListener?.refreshItems()
++                        }
++                        v.performClick()
++                        true
++                    }
++                    else -> true
++                }
 +            }
 +        } else {
 +            starButton.setOnTouchListener(null)
@@ -894,7 +926,7 @@ index fb6827ce..e5c759e9 100644
              }
          }
      }
-@@ -441,17 +577,30 @@ class ContactsAdapter(
+@@ -441,17 +609,30 @@ class ContactsAdapter(
      override fun onRowMoved(fromPosition: Int, toPosition: Int) {
          activity.config.isCustomOrderSelected = true
  
@@ -1457,7 +1489,7 @@ index 7d40f83d..7ede86b0 100644
          app:layout_constraintEnd_toEndOf="parent"
          app:layout_constraintStart_toStartOf="parent"
 diff --git a/app/src/main/res/layout/activity_dialpad.xml b/app/src/main/res/layout/activity_dialpad.xml
-index da22d3d2..657a34b3 100644
+index da22d3d2..4b20e757 100644
 --- a/app/src/main/res/layout/activity_dialpad.xml
 +++ b/app/src/main/res/layout/activity_dialpad.xml
 @@ -62,6 +62,7 @@
@@ -1468,7 +1500,7 @@ index da22d3d2..657a34b3 100644
              app:layout_constraintBottom_toTopOf="@+id/dialpad_divider"
              app:layout_constraintEnd_toEndOf="parent"
              app:layout_constraintTop_toTopOf="@+id/dialpad_list" />
-@@ -128,9 +129,18 @@
+@@ -128,9 +129,19 @@
              android:elevation="@dimen/small_margin"
              android:padding="@dimen/normal_margin"
              android:src="@drawable/ic_phone_vector"
@@ -1480,7 +1512,8 @@ index da22d3d2..657a34b3 100644
 +        <com.google.android.material.tabs.TabLayout
 +            android:id="@+id/dialpad_bottom_bar"
 +            android:layout_width="match_parent"
-+            android:layout_height="@dimen/bottom_nav_min_height"
++            android:layout_height="wrap_content"
++            android:minHeight="@dimen/bottom_nav_min_height"
 +            app:layout_constraintBottom_toBottomOf="parent"
 +            app:tabIndicator="@null"
 +            app:tabMinWidth="150dp"
