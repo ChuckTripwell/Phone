@@ -1248,7 +1248,7 @@ index 00000000..df40a019
 +    }
 +}
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
-index 67c57460..b8b49a45 100644
+index 67c57460..80cd7427 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
 @@ -465,7 +465,7 @@ class RecentCallsAdapter(
@@ -1260,7 +1260,15 @@ index 67c57460..b8b49a45 100644
              allowLongClick = refreshItemsListener != null && !call.isUnknownNumber
          ) { _, _ ->
              binding.apply {
-@@ -606,6 +606,15 @@ class RecentCallsAdapter(
+@@ -511,7 +511,6 @@ class RecentCallsAdapter(
+                     text = nameToShow
+                     setTextColor(textColor)
+                     setTextSize(TypedValue.COMPLEX_UNIT_PX, currentFontSize)
+-                    isSelected = true
+                 }
+ 
+                 itemRecentsDateTime.apply {
+@@ -606,6 +605,15 @@ class RecentCallsAdapter(
  
                  itemRecentsType.setImageDrawable(drawable)
  
@@ -1382,7 +1390,7 @@ index 57c5412c..84d48d69 100644
 +        cp in 0xFE00..0xFE0F || cp in 0xFE20..0xFE2F // variation selectors
 +}
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
-index 9a26a05f..bfb992ab 100644
+index 9a26a05f..8378dc1c 100644
 --- a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 @@ -2,6 +2,8 @@ package org.fossify.phone.fragments
@@ -1529,7 +1537,7 @@ index 9a26a05f..bfb992ab 100644
 +    }
 +
 +    private fun setupLetterFastScroller(contacts: List<Contact>) {
-+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = true)
++        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = false)
      }
  
      override fun onSearchClosed() {
@@ -2509,7 +2517,7 @@ index 00000000..8fc76ae9
 +
 +</org.fossify.phone.fragments.DialpadFragment>
 diff --git a/app/src/main/res/layout/fragment_letters_layout.xml b/app/src/main/res/layout/fragment_letters_layout.xml
-index 11eb57e8..6f5fd21c 100644
+index 11eb57e8..1d2c2e58 100644
 --- a/app/src/main/res/layout/fragment_letters_layout.xml
 +++ b/app/src/main/res/layout/fragment_letters_layout.xml
 @@ -5,7 +5,7 @@
@@ -2521,7 +2529,7 @@ index 11eb57e8..6f5fd21c 100644
  
          <org.fossify.commons.views.MyTextView
              android:id="@+id/fragment_placeholder"
-@@ -42,16 +42,18 @@
+@@ -42,16 +42,19 @@
              android:clipToPadding="false"
              android:layoutAnimation="@anim/layout_animation"
              android:paddingBottom="@dimen/recyclerview_fab_padding"
@@ -2534,7 +2542,8 @@ index 11eb57e8..6f5fd21c 100644
              android:layout_width="32dp"
 -            android:layout_height="wrap_content"
 -            android:layout_alignParentEnd="true"
-+            android:layout_height="match_parent"
++            android:layout_height="@dimen/fast_scroller_height"
++            android:layout_alignParentTop="true"
 +            android:layout_alignParentStart="true"
              android:paddingTop="@dimen/big_margin"
 -            android:paddingBottom="@dimen/big_margin" />
@@ -2543,7 +2552,7 @@ index 11eb57e8..6f5fd21c 100644
  
          <com.reddit.indicatorfastscroll.FastScrollerThumbView
              android:id="@+id/letter_fastscroller_thumb"
-@@ -59,8 +61,8 @@
+@@ -59,8 +62,8 @@
              android:layout_height="match_parent"
              android:layout_alignTop="@+id/letter_fastscroller"
              android:layout_alignBottom="@+id/letter_fastscroller"
@@ -2615,10 +2624,20 @@ index 00000000..c2b7e7da
 +
 +</androidx.constraintlayout.widget.ConstraintLayout>
 diff --git a/app/src/main/res/layout/item_recent_call.xml b/app/src/main/res/layout/item_recent_call.xml
-index d0a6d55b..15831a38 100644
+index d0a6d55b..2e56f710 100644
 --- a/app/src/main/res/layout/item_recent_call.xml
 +++ b/app/src/main/res/layout/item_recent_call.xml
-@@ -38,7 +38,7 @@
+@@ -29,16 +29,14 @@
+         android:layout_height="wrap_content"
+         android:layout_marginStart="@dimen/small_margin"
+         android:layout_marginEnd="@dimen/small_margin"
+-        android:ellipsize="marquee"
++        android:ellipsize="end"
+         android:focusable="false"
+-        android:marqueeRepeatLimit="3"
+-        android:scrollHorizontally="true"
+         android:singleLine="true"
+         android:textAlignment="viewStart"
          android:textDirection="firstStrongLtr"
          android:textSize="@dimen/bigger_text_size"
          app:layout_constraintBottom_toTopOf="@id/item_recents_date_time"
@@ -2627,7 +2646,7 @@ index d0a6d55b..15831a38 100644
          app:layout_constraintStart_toEndOf="@+id/item_recents_image"
          app:layout_constraintTop_toTopOf="parent"
          app:layout_constraintVertical_chainStyle="spread_inside"
-@@ -141,11 +141,24 @@
+@@ -141,11 +139,24 @@
          android:maxLines="1"
          android:textSize="@dimen/normal_text_size"
          app:layout_constraintBottom_toBottomOf="@id/item_recents_date_time"
@@ -2742,10 +2761,10 @@ index ce9da31b..28e9cf41 100644
 +    <color name="default_text_color">#FF000000</color>
  </resources>
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
-index dacf1a28..8a7cf4bd 100644
+index dacf1a28..61b73a9e 100644
 --- a/app/src/main/res/values/dimens.xml
 +++ b/app/src/main/res/values/dimens.xml
-@@ -12,10 +12,40 @@
+@@ -12,10 +12,43 @@
      <dimen name="call_control_button_size">72dp</dimen>
      <dimen name="recyclerview_fab_padding">100dp</dimen>
  
@@ -2775,6 +2794,9 @@ index dacf1a28..8a7cf4bd 100644
 +
 +    <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
 +    <dimen name="fast_scroller_letter_size">13sp</dimen>
++
++    <!-- fast scroller strip height (kept short so the side letters are a small line, not a full column) -->
++    <dimen name="fast_scroller_height">72dp</dimen>
 +
 +    <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
 +    <dimen name="bottom_nav_min_height">52dp</dimen>
