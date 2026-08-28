@@ -1247,6 +1247,35 @@ index 00000000..df40a019
 +        private const val DEFAULT_COLOR = 0x33000000
 +    }
 +}
+diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+index 67c57460..b8b49a45 100644
+--- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
++++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+@@ -465,7 +465,7 @@ class RecentCallsAdapter(
+     private inner class RecentCallViewHolder(val binding: ItemRecentCallBinding) : ViewHolder(binding.root) {
+         fun bind(call: RecentCall) = bindView(
+             item = call,
+-            allowSingleClick = refreshItemsListener != null && !call.isUnknownNumber,
++            allowSingleClick = false,
+             allowLongClick = refreshItemsListener != null && !call.isUnknownNumber
+         ) { _, _ ->
+             binding.apply {
+@@ -606,6 +606,15 @@ class RecentCallsAdapter(
+ 
+                 itemRecentsType.setImageDrawable(drawable)
+ 
++                itemRecentsCallButton.setImageDrawable(resources.getDrawable(R.drawable.ic_call_green_button))
++                itemRecentsCallButton.setOnClickListener {
++                    if (actModeCallback.isSelectable) {
++                        viewClicked(call)
++                    } else {
++                        (activity as SimpleActivity).startCallWithConfirmationCheck(call.phoneNumber, call.name)
++                    }
++                }
++
+                 overflowMenuIcon.beVisibleIf(showOverflowMenu)
+                 overflowMenuIcon.drawable.apply {
+                     mutate()
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt
 index ef3f5c4c..c584a590 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ViewPagerAdapter.kt
@@ -2585,6 +2614,45 @@ index 00000000..c2b7e7da
 +        tools:visibility="visible" />
 +
 +</androidx.constraintlayout.widget.ConstraintLayout>
+diff --git a/app/src/main/res/layout/item_recent_call.xml b/app/src/main/res/layout/item_recent_call.xml
+index d0a6d55b..15831a38 100644
+--- a/app/src/main/res/layout/item_recent_call.xml
++++ b/app/src/main/res/layout/item_recent_call.xml
+@@ -38,7 +38,7 @@
+         android:textDirection="firstStrongLtr"
+         android:textSize="@dimen/bigger_text_size"
+         app:layout_constraintBottom_toTopOf="@id/item_recents_date_time"
+-        app:layout_constraintEnd_toStartOf="@+id/overflow_menu_icon"
++        app:layout_constraintEnd_toStartOf="@+id/item_recents_call_button"
+         app:layout_constraintStart_toEndOf="@+id/item_recents_image"
+         app:layout_constraintTop_toTopOf="parent"
+         app:layout_constraintVertical_chainStyle="spread_inside"
+@@ -141,11 +141,24 @@
+         android:maxLines="1"
+         android:textSize="@dimen/normal_text_size"
+         app:layout_constraintBottom_toBottomOf="@id/item_recents_date_time"
+-        app:layout_constraintEnd_toStartOf="@+id/overflow_menu_icon"
++        app:layout_constraintEnd_toStartOf="@+id/item_recents_call_button"
+         app:layout_constraintStart_toEndOf="@+id/item_recents_duration"
+         app:layout_constraintTop_toTopOf="@id/item_recents_date_time"
+         tools:text="Australia" />
+ 
++    <ImageView
++        android:id="@+id/item_recents_call_button"
++        android:layout_width="@dimen/call_button_size"
++        android:layout_height="@dimen/call_button_size"
++        android:layout_marginEnd="@dimen/small_margin"
++        android:background="?attr/selectableItemBackgroundBorderless"
++        android:contentDescription="@string/call_number"
++        android:src="@drawable/ic_call_green_button"
++        app:layout_constraintBottom_toBottomOf="parent"
++        app:layout_constraintEnd_toStartOf="@+id/overflow_menu_icon"
++        app:layout_constraintTop_toTopOf="parent"
++        tools:ignore="ContentDescription" />
++
+     <ImageView
+         android:id="@+id/overflow_menu_icon"
+         style="@style/OverflowMenuIconStyle"
 diff --git a/app/src/main/res/menu/cab_contacts.xml b/app/src/main/res/menu/cab_contacts.xml
 index 56ebf532..3dca99e2 100644
 --- a/app/src/main/res/menu/cab_contacts.xml
