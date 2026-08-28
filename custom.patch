@@ -619,7 +619,7 @@ index a2c0bdb3..8e2bd048 100644
              else -> R.string.last_used_tab
          }
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
-index fb6827ce..fda5067c 100644
+index fb6827ce..115bf91f 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 @@ -3,6 +3,7 @@ package org.fossify.phone.adapters
@@ -704,7 +704,17 @@ index fb6827ce..fda5067c 100644
      private fun getSelectedPhoneNumber(): String? {
          return getSelectedItems().firstOrNull()?.getPrimaryNumber()
      }
-@@ -359,6 +381,10 @@ class ContactsAdapter(
+@@ -355,10 +377,20 @@ class ContactsAdapter(
+         if (!activity.isDestroyed && !activity.isFinishing) {
+             Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
+                 Glide.with(activity).clear(itemContactImage)
++                itemContactFrame.findViewById<View>(R.id.contact_star_button)?.let { starButton ->
++                    (starButton.getTag(R.id.contact_star_button) as? Runnable)?.let {
++                        starButton.removeCallbacks(it)
++                    }
++                    starButton.setTag(R.id.contact_star_button, null)
++                }
+             }
          }
      }
  
@@ -715,7 +725,7 @@ index fb6827ce..fda5067c 100644
      @SuppressLint("ClickableViewAccessibility")
      private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
          binding.apply {
-@@ -367,7 +393,7 @@ class ContactsAdapter(
+@@ -367,7 +399,7 @@ class ContactsAdapter(
  
              itemContactImage.apply {
                  if (profileIconClick != null && viewType != VIEW_TYPE_GRID) {
@@ -724,7 +734,7 @@ index fb6827ce..fda5067c 100644
  
                      setOnClickListener {
                          if (!actModeCallback.isSelectable) {
-@@ -376,7 +402,7 @@ class ContactsAdapter(
+@@ -376,7 +408,7 @@ class ContactsAdapter(
                              holder.viewClicked(contact)
                          }
                      }
@@ -733,7 +743,7 @@ index fb6827ce..fda5067c 100644
                          holder.viewLongClicked()
                          true
                      }
-@@ -384,7 +410,13 @@ class ContactsAdapter(
+@@ -384,7 +416,13 @@ class ContactsAdapter(
              }
  
              itemContactName.apply {
@@ -748,7 +758,7 @@ index fb6827ce..fda5067c 100644
                  setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
  
                  val name = contact.getNameToDisplay()
-@@ -414,26 +446,162 @@ class ContactsAdapter(
+@@ -414,26 +452,179 @@ class ContactsAdapter(
                  }
              }
  
@@ -758,9 +768,6 @@ index fb6827ce..fda5067c 100644
 -                    applyColorFilter(textColor)
 -                    setOnTouchListener { _, event ->
 -                        if (event.action == MotionEvent.ACTION_DOWN) {
--                            startReorderDragListener?.requestDrag(holder)
--                        }
--                        false
 +            dragHandleIcon.beGone()
 +            dragHandleIcon.setOnTouchListener(null)
 +
@@ -836,13 +843,9 @@ index fb6827ce..fda5067c 100644
 +                    val action = if (hasPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
 +                    val intent = Intent(action).apply {
 +                        data = Uri.fromParts("tel", number, null)
-                     }
++                    }
 +                    activity.startActivity(intent)
-                 }
--            } else {
--                dragHandleIcon.apply {
--                    beGone()
--                    setOnTouchListener(null)
++                }
 +            }
 +        }
 +    }
@@ -861,23 +864,27 @@ index fb6827ce..fda5067c 100644
 +                layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
 +                    topToTop = ConstraintSet.PARENT_ID
 +                    bottomToBottom = ConstraintSet.PARENT_ID
-                 }
-             }
++                }
++            }
 +            binding.itemContactFrame.addView(starButton)
 +        }
- 
--            if (!activity.isDestroyed) {
--                SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
++
 +        starButton.setImageDrawable(
 +            ContextCompat.getDrawable(
 +                activity,
-+                if (contact.starred == 1) R.drawable.ic_star_handle_gold else R.drawable.ic_star_outline_gold
++                if (contact.starred == 1) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
 +            )
 +        )
 +
 +        val isFavorite = contact.starred == 1
 +        if (isFavorite) {
 +            starButton.setOnClickListener(null)
++            val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
++            var longPressed = false
++            val longPressRunnable = Runnable {
++                longPressed = true
++                holder.viewLongClicked()
++            }
 +            starButton.setOnTouchListener { v, event ->
 +                if (actModeCallback.isSelectable) {
 +                    v.performClick()
@@ -889,6 +896,7 @@ index fb6827ce..fda5067c 100644
 +                var downTime = 0L
 +                var dragged = false
 +                val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
++                v.setTag(R.id.contact_star_button, longPressRunnable)
 +
 +                when (event.actionMasked) {
 +                    MotionEvent.ACTION_DOWN -> {
@@ -896,26 +904,44 @@ index fb6827ce..fda5067c 100644
 +                        downY = event.y
 +                        downTime = event.eventTime
 +                        dragged = false
++                        longPressed = false
++                        v.removeCallbacks(longPressRunnable)
++                        v.postDelayed(longPressRunnable, longPressTimeout)
 +                        true
 +                    }
 +                    MotionEvent.ACTION_MOVE -> {
 +                        if (kotlin.math.hypot(event.x - downX, event.y - downY) > touchSlop) {
 +                            dragged = true
-+                            startReorderDragListener?.requestDrag(holder)
-+                        }
++                            v.removeCallbacks(longPressRunnable)
+                             startReorderDragListener?.requestDrag(holder)
+                         }
+-                        false
 +                        true
-+                    }
+                     }
+-                }
+-            } else {
+-                dragHandleIcon.apply {
+-                    beGone()
+-                    setOnTouchListener(null)
 +                    MotionEvent.ACTION_UP -> {
-+                        if (!dragged && (event.eventTime - downTime) < ViewConfiguration.getLongPressTimeout()) {
++                        v.removeCallbacks(longPressRunnable)
++                        if (!dragged && !longPressed && (event.eventTime - downTime) < longPressTimeout) {
 +                            ContactsHelper(activity).removeFavorites(arrayListOf(contact))
 +                            refreshItemsListener?.refreshItems()
 +                        }
 +                        v.performClick()
 +                        true
 +                    }
++                    MotionEvent.ACTION_CANCEL -> {
++                        v.removeCallbacks(longPressRunnable)
++                        true
++                    }
 +                    else -> true
-+                }
-+            }
+                 }
+             }
+ 
+-            if (!activity.isDestroyed) {
+-                SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
 +        } else {
 +            starButton.setOnTouchListener(null)
 +            starButton.setOnClickListener {
@@ -926,7 +952,7 @@ index fb6827ce..fda5067c 100644
              }
          }
      }
-@@ -441,17 +609,30 @@ class ContactsAdapter(
+@@ -441,17 +632,30 @@ class ContactsAdapter(
      override fun onRowMoved(fromPosition: Int, toPosition: Int) {
          activity.config.isCustomOrderSelected = true
  
@@ -1692,6 +1718,66 @@ index 11eb57e8..6f5fd21c 100644
  
      </RelativeLayout>
  </merge>
+diff --git a/app/src/main/res/layout/item_contact_without_number.xml b/app/src/main/res/layout/item_contact_without_number.xml
+new file mode 100644
+index 00000000..c2b7e7da
+--- /dev/null
++++ b/app/src/main/res/layout/item_contact_without_number.xml
+@@ -0,0 +1,54 @@
++<?xml version="1.0" encoding="utf-8"?>
++<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:id="@+id/item_contact_frame"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:layout_marginBottom="@dimen/contact_row_gap"
++    android:background="@drawable/selector_clickable"
++    android:clickable="true"
++    android:focusable="true"
++    android:minHeight="@dimen/contact_row_min_height"
++    android:paddingHorizontal="@dimen/contact_row_padding_horizontal"
++    android:paddingVertical="@dimen/contact_row_padding_vertical">
++
++    <ImageView
++        android:id="@+id/item_contact_image"
++        android:layout_width="@dimen/list_icon_size_medium"
++        android:layout_height="@dimen/list_icon_size_medium"
++        android:padding="@dimen/tiny_margin"
++        android:src="@drawable/ic_person_vector"
++        app:layout_constraintBottom_toBottomOf="parent"
++        app:layout_constraintStart_toStartOf="parent"
++        app:layout_constraintTop_toTopOf="parent" />
++
++    <TextView
++        android:id="@+id/item_contact_name"
++        android:layout_width="0dp"
++        android:layout_height="wrap_content"
++        android:layout_marginHorizontal="@dimen/contact_name_margin"
++        android:ellipsize="end"
++        android:maxLines="1"
++        android:textDirection="locale"
++        android:textSize="@dimen/list_primary_text_size"
++        app:layout_constraintBottom_toBottomOf="parent"
++        app:layout_constraintEnd_toStartOf="@+id/drag_handle_icon"
++        app:layout_constraintStart_toEndOf="@+id/item_contact_image"
++        app:layout_constraintTop_toTopOf="parent"
++        tools:text="John Doe" />
++
++    <ImageView
++        android:id="@+id/drag_handle_icon"
++        android:layout_width="@dimen/list_touch_target_min"
++        android:layout_height="@dimen/list_touch_target_min"
++        android:paddingTop="@dimen/normal_margin"
++        android:paddingBottom="@dimen/normal_margin"
++        android:src="@drawable/ic_drag_handle_vector"
++        android:visibility="gone"
++        app:layout_constraintBottom_toBottomOf="parent"
++        app:layout_constraintEnd_toEndOf="parent"
++        app:layout_constraintTop_toTopOf="parent"
++        tools:visibility="visible" />
++
++</androidx.constraintlayout.widget.ConstraintLayout>
 diff --git a/app/src/main/res/menu/cab_contacts.xml b/app/src/main/res/menu/cab_contacts.xml
 index 56ebf532..3dca99e2 100644
 --- a/app/src/main/res/menu/cab_contacts.xml
@@ -1781,10 +1867,10 @@ index ce9da31b..28e9cf41 100644
 +    <color name="default_text_color">#FF000000</color>
  </resources>
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
-index dacf1a28..4d711eda 100644
+index dacf1a28..e5c45d84 100644
 --- a/app/src/main/res/values/dimens.xml
 +++ b/app/src/main/res/values/dimens.xml
-@@ -12,10 +12,33 @@
+@@ -12,10 +12,40 @@
      <dimen name="call_control_button_size">72dp</dimen>
      <dimen name="recyclerview_fab_padding">100dp</dimen>
  
@@ -1817,6 +1903,13 @@ index dacf1a28..4d711eda 100644
 +
 +    <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
 +    <dimen name="bottom_nav_min_height">52dp</dimen>
++
++    <!-- contacts rows: roomier, less claustrophobic (overrides commons one_line/vertical/horizontal) -->
++    <dimen name="contact_row_min_height">66dp</dimen>
++    <dimen name="contact_row_padding_vertical">12dp</dimen>
++    <dimen name="contact_row_padding_horizontal">20dp</dimen>
++    <dimen name="contact_row_gap">4dp</dimen>
++    <dimen name="contact_name_margin">12dp</dimen>
  </resources>
 diff --git a/app/src/main/res/values/ids.xml b/app/src/main/res/values/ids.xml
 new file mode 100644
