@@ -209,7 +209,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     private fun setupLetterFastScroller(contacts: List<Contact>) {
-        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = true)
+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = false)
     }
 
     override fun onSearchClosed() {
