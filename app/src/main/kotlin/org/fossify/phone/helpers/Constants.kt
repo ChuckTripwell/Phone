@@ -20,6 +20,7 @@ const val HIDE_DIALPAD_NUMBERS = "hide_dialpad_numbers"
 const val ALWAYS_SHOW_FULLSCREEN = "always_show_fullscreen"
 const val HEBREW_FONT_PATH = "hebrew_font_path"
 const val HEBREW_FONT_FILE = "hebrew_font_file_path"
+const val CALL_BACKGROUND_GIF = "call_background_gif"
 
 const val ALL_TABS_MASK = TAB_CONTACTS or TAB_CALL_HISTORY
 

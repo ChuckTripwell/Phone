@@ -29,7 +29,7 @@ class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
         container.removeView(item as View)
     }
 
-    override fun getCount() = tabsList.filter { it and activity.config.showTabs != 0 }.size
+    override fun getCount() = tabsList.filter { it and activity.config.showTabs != 0 }.size + 1
 
     override fun isViewFromObject(view: View, item: Any) = view == item
 
@@ -43,6 +43,8 @@ class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
         if (showTabs and TAB_CALL_HISTORY > 0) {
             fragments.add(R.layout.fragment_recents)
         }
+
+        fragments.add(R.layout.fragment_dialpad)
 
         return if (position < fragments.size) fragments[position] else fragments.last()
     }

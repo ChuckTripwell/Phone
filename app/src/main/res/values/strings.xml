@@ -85,6 +85,12 @@
     <string name="calling_accounts">Calling accounts</string>
     <string name="hebrew_font">Hebrew font</string>
     <string name="font_default">Default</string>
+    <string name="call_background_gif">Call background GIF</string>
+    <string name="select_gif">Select GIF file</string>
+    <string name="gif_none">None</string>
+    <string name="invalid_gif_file">Invalid GIF file</string>
+    <string name="clear_gif">Remove GIF</string>
+    <string name="saved">Saved</string>
     <string name="font_serif">Serif</string>
     <string name="font_monospace">Monospace</string>
 

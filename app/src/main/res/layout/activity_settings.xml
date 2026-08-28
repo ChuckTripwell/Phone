@@ -191,6 +191,29 @@
             </RelativeLayout>
 
             <RelativeLayout
+                android:id="@+id/settings_call_background_gif_holder"
+                style="@style/SettingsHolderTextViewStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <org.fossify.commons.views.MyTextView
+                    android:id="@+id/settings_call_background_gif_label"
+                    style="@style/SettingsTextLabelStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/call_background_gif" />
+
+                <org.fossify.commons.views.MyTextView
+                    android:id="@+id/settings_call_background_gif"
+                    style="@style/SettingsTextValueStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/settings_call_background_gif_label"
+                    tools:text="@string/font_default" />
+
+            </RelativeLayout>
+
+            <RelativeLayout
                 android:id="@+id/settings_start_name_with_surname_holder"
                 style="@style/SettingsHolderSwitchStyle"
                 android:layout_width="match_parent"

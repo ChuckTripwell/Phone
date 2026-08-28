@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
+import android.graphics.Typeface
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +28,7 @@ import androidx.core.view.setPadding
 import androidx.core.view.updatePadding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
+import java.io.File
 import org.fossify.commons.extensions.*
 import org.fossify.commons.helpers.*
 import org.fossify.commons.models.SimpleListItem
@@ -81,6 +83,8 @@ class CallActivity : SimpleActivity() {
         )
 
         updateTextColors(binding.callHolder)
+        applyHebrewFontToCallerText()
+        setupCallBackgroundGif()
         initButtons()
         audioManager.mode = AudioManager.MODE_IN_CALL
         addLockScreenFlags()
@@ -564,10 +568,57 @@ class CallActivity : SimpleActivity() {
         }
     }
 
+    private fun applyHebrewFontToCallerText() {
+        val typeface = getHebrewFontTypeface()
+        binding.apply {
+            this@CallActivity.applyFontToTextView(callerNameLabel, typeface, true)
+            this@CallActivity.applyFontToTextView(callerNumber, typeface, true)
+            this@CallActivity.applyFontToTextView(onHoldCallerName, typeface, true)
+        }
+    }
+
+    private fun getHebrewFontTypeface(): Typeface {
+        return when (config.hebrewFontType) {
+            1 -> Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+            2 -> Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+            3 -> if (config.hebrewFontFile.isEmpty()) {
+                Typeface.DEFAULT
+            } else {
+                FontHelper.getTypeface(this, 2, config.hebrewFontFile)
+            }
+            else -> Typeface.DEFAULT
+        }
+    }
+
+    private fun setupCallBackgroundGif() {
+        val gifPath = config.callBackgroundGif
+        if (gifPath.isEmpty()) {
+            binding.callBackgroundGif.beGone()
+            binding.callBackgroundGifScrim.beGone()
+            return
+        }
+
+        val file = File(gifPath)
+        if (!file.exists()) {
+            binding.callBackgroundGif.beGone()
+            binding.callBackgroundGifScrim.beGone()
+            return
+        }
+
+        binding.apply {
+            callBackgroundGif.beVisible()
+            callBackgroundGifScrim.beVisible()
+            Glide.with(this@CallActivity)
+                .asGif()
+                .load(file)
+                .apply(RequestOptions().centerCrop().override(1920, 1920))
+                .into(callBackgroundGif)
+        }
+    }
+
     private fun toggleHold() {
         val isOnHold = CallManager.toggleHold()
         toggleButtonColor(binding.callToggleHold, isOnHold)
-        binding.callToggleHold.contentDescription = getString(if (isOnHold) R.string.resume_call else R.string.hold_call)
         binding.holdStatusLabel.beInvisibleIf(!isOnHold)
     }
 

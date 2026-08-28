@@ -143,4 +143,8 @@ class Config(context: Context) : BaseConfig(context) {
     var hebrewFontFile: String
         get() = prefs.getString(HEBREW_FONT_FILE, "") ?: ""
         set(fontFile) = prefs.edit().putString(HEBREW_FONT_FILE, fontFile).apply()
+
+    var callBackgroundGif: String
+        get() = prefs.getString(CALL_BACKGROUND_GIF, "") ?: ""
+        set(gifPath) = prefs.edit().putString(CALL_BACKGROUND_GIF, gifPath).apply()
 }

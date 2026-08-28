@@ -97,6 +97,13 @@ class SettingsActivity : SimpleActivity() {
             }
         }
 
+    private val gifFilePicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                handleCallBackgroundGif(uri)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
@@ -121,6 +128,7 @@ class SettingsActivity : SimpleActivity() {
         setupChangeDateTimeFormat()
         setupFontSize()
         setupHebrewFont()
+        setupCallBackgroundGif()
         setupManageShownTabs()
         setupDefaultTab()
         setupOnContactClick()
@@ -318,6 +326,92 @@ class SettingsActivity : SimpleActivity() {
         config.hebrewFontFile = fileName
         config.hebrewFontType = HEBREW_FONT_CUSTOM
         binding.settingsHebrewFont.text = getHebrewFontText()
+    }
+
+    private fun setupCallBackgroundGif() {
+        binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
+        binding.settingsCallBackgroundGifHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(0, getString(R.string.gif_none))
+            )
+            RadioGroupDialog(this@SettingsActivity, items, if (config.callBackgroundGif.isEmpty()) 0 else 1) { newValue ->
+                val selected = newValue as Int
+                if (selected == 0) {
+                    clearCallBackgroundGif()
+                } else {
+                    gifFilePicker.launch(arrayOf("image/gif", "*/*"))
+                }
+            }
+        }
+    }
+
+    private fun getCallBackgroundGifText(): String {
+        return if (config.callBackgroundGif.isEmpty()) {
+            getString(R.string.gif_none)
+        } else {
+            File(config.callBackgroundGif).name
+        }
+    }
+
+    private fun handleCallBackgroundGif(uri: Uri) {
+        val fileName = getFilenameFromUri(uri)
+        if (fileName.isEmpty()) {
+            toast(R.string.invalid_gif_file)
+            return
+        }
+
+        val bytes = try {
+            contentResolver.openInputStream(uri)?.readBytes()
+        } catch (ignored: Exception) {
+            null
+        }
+
+        if (bytes == null || bytes.isEmpty()) {
+            toast(R.string.invalid_gif_file)
+            return
+        }
+
+        // GIF signature: 47 49 46 38 ("GIF8")
+        val isGif = bytes.size >= 6 &&
+            bytes[0] == 'G'.code.toByte() &&
+            bytes[1] == 'I'.code.toByte() &&
+            bytes[2] == 'F'.code.toByte() &&
+            bytes[3] == '8'.code.toByte()
+
+        if (!isGif) {
+            toast(R.string.invalid_gif_file)
+            return
+        }
+
+        try {
+            val file = File(gifBackgroundsDir(), fileName)
+            file.writeBytes(bytes)
+            config.callBackgroundGif = file.absolutePath
+            binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
+            toast(R.string.saved)
+        } catch (ignored: Exception) {
+            toast(R.string.invalid_gif_file)
+        }
+    }
+
+    private fun clearCallBackgroundGif() {
+        val path = config.callBackgroundGif
+        if (path.isNotEmpty()) {
+            try {
+                File(path).delete()
+            } catch (ignored: Exception) {
+            }
+        }
+        config.callBackgroundGif = ""
+        binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
+    }
+
+    private fun gifBackgroundsDir(): File {
+        val dir = File(filesDir, "call_backgrounds")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir
     }
 
     private fun setupManageShownTabs() {
