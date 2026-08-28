@@ -332,7 +332,8 @@ class SettingsActivity : SimpleActivity() {
         binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
         binding.settingsCallBackgroundGifHolder.setOnClickListener {
             val items = arrayListOf(
-                RadioItem(0, getString(R.string.gif_none))
+                RadioItem(0, getString(R.string.gif_none)),
+                RadioItem(1, getString(R.string.select_gif))
             )
             RadioGroupDialog(this@SettingsActivity, items, if (config.callBackgroundGif.isEmpty()) 0 else 1) { newValue ->
                 val selected = newValue as Int
@@ -349,7 +350,7 @@ class SettingsActivity : SimpleActivity() {
         return if (config.callBackgroundGif.isEmpty()) {
             getString(R.string.gif_none)
         } else {
-            File(config.callBackgroundGif).name
+            "${getString(R.string.gif_picked)}  ${File(config.callBackgroundGif).name}"
         }
     }
 

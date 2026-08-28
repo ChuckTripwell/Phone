@@ -90,6 +90,7 @@
     <string name="gif_none">None</string>
     <string name="invalid_gif_file">Invalid GIF file</string>
     <string name="clear_gif">Remove GIF</string>
+    <string name="gif_picked">✓ GIF picked</string>
     <string name="saved">Saved</string>
     <string name="font_serif">Serif</string>
     <string name="font_monospace">Monospace</string>

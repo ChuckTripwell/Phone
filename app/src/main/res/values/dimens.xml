@@ -39,9 +39,6 @@
     <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
     <dimen name="fast_scroller_letter_size">13sp</dimen>
 
-    <!-- fast scroller strip height (kept short so the side letters are a small line, not a full column) -->
-    <dimen name="fast_scroller_height">72dp</dimen>
-
     <!-- bottom nav bars: BOTH use this exact fixed height so dialer is pixel-identical to main -->
     <dimen name="bottom_nav_min_height">52dp</dimen>
 

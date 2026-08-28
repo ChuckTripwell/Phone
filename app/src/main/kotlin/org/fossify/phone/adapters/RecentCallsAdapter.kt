@@ -61,6 +61,7 @@ import org.fossify.phone.extensions.getDayCode
 import org.fossify.phone.extensions.startAddContactIntent
 import org.fossify.phone.extensions.startCallWithConfirmationCheck
 import org.fossify.phone.extensions.startContactDetailsIntent
+import org.fossify.phone.helpers.HebrewFontHelper
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.interfaces.RefreshItemsListener
 import org.fossify.phone.models.CallLogItem
@@ -623,6 +624,8 @@ class RecentCallsAdapter(
                 overflowMenuIcon.setOnClickListener {
                     showPopupMenu(overflowMenuAnchor, call)
                 }
+
+                HebrewFontHelper.applyHebrewFontToHierarchy(root, activity)
             }
         }
     }

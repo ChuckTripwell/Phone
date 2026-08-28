@@ -34,6 +34,7 @@ import org.fossify.commons.models.contacts.Contact
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.phone.R
 import org.fossify.phone.activities.SimpleActivity
+import org.fossify.phone.helpers.HebrewFontHelper
 import org.fossify.phone.extensions.areMultipleSIMsAvailable
 import org.fossify.phone.extensions.callContactWithSim
 import org.fossify.phone.extensions.config
@@ -158,6 +159,7 @@ class ContactsAdapter(
         holder.bindView(contact, true, allowLongClick) { itemView, _ ->
             val viewType = getItemViewType(position)
             setupView(Binding.getByItemViewType(viewType).bind(itemView), contact, holder)
+            HebrewFontHelper.applyHebrewFontToHierarchy(itemView, activity)
         }
         bindViewHolder(holder)
     }

@@ -578,16 +578,7 @@ class CallActivity : SimpleActivity() {
     }
 
     private fun getHebrewFontTypeface(): Typeface {
-        return when (config.hebrewFontType) {
-            1 -> Typeface.create(Typeface.SERIF, Typeface.NORMAL)
-            2 -> Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-            3 -> if (config.hebrewFontFile.isEmpty()) {
-                Typeface.DEFAULT
-            } else {
-                FontHelper.getTypeface(this, 2, config.hebrewFontFile)
-            }
-            else -> Typeface.DEFAULT
-        }
+        return HebrewFontHelper.getHebrewTypeface(this)
     }
 
     private fun setupCallBackgroundGif() {

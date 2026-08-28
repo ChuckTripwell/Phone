@@ -205,7 +205,7 @@ class DialpadFragment(
             letterFastscroller.textColor = act.getProperTextColor().getColorStateList()
             letterFastscroller.pressedTextColor = properPrimaryColor
             dialpadClearChar.applyColorFilter(act.getProperTextColor())
-            dialpadInput.setTextColor(properPrimaryColor)
+            dialpadInput.setTextColor(android.graphics.Color.BLACK)
         }
     }
 
@@ -366,23 +366,20 @@ class DialpadFragment(
     private fun setupCharClick(view: View, char: Char, longClickable: Boolean = true) {
         view.isClickable = true
         view.isLongClickable = true
+        val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+        var downX = -1f
+        var downY = -1f
         view.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    dialpadPressed(char, view)
+                    downX = event.x
+                    downY = event.y
                     startDialpadTone(char)
                     if (longClickable) {
                         longPressHandler.removeCallbacksAndMessages(null)
                         longPressHandler.postDelayed({
                             performLongClick(view, char)
                         }, longPressTimeout)
-                    }
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    stopDialpadTone(char)
-                    if (longClickable) {
-                        longPressHandler.removeCallbacksAndMessages(null)
                     }
                 }
 
@@ -393,11 +390,31 @@ class DialpadFragment(
                         view.boundingBox.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
                     }
 
-                    if (!viewContainsTouchEvent) {
+                    val movedBeyondSlop = downX != -1f && (Math.abs(event.x - downX) > touchSlop || Math.abs(event.y - downY) > touchSlop)
+                    if (!viewContainsTouchEvent || movedBeyondSlop) {
                         stopDialpadTone(char)
                         if (longClickable) {
                             longPressHandler.removeCallbacksAndMessages(null)
                         }
+                    }
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    val viewContainsTouchEvent = view.boundingBox.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
+                    val movedBeyondSlop = downX != -1f && (Math.abs(event.x - downX) > touchSlop || Math.abs(event.y - downY) > touchSlop)
+                    if (viewContainsTouchEvent && !movedBeyondSlop) {
+                        dialpadPressed(char, view)
+                    }
+                    stopDialpadTone(char)
+                    if (longClickable) {
+                        longPressHandler.removeCallbacksAndMessages(null)
+                    }
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    stopDialpadTone(char)
+                    if (longClickable) {
+                        longPressHandler.removeCallbacksAndMessages(null)
                     }
                 }
             }
