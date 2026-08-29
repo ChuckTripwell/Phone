@@ -504,29 +504,50 @@ index ef3f5c4c..1d5b93cb 100644
              fragments.add(R.layout.fragment_recents)
          }
 diff --git a/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt b/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
-index 57c5412c..84d48d69 100644
+index 57c5412c..912375ff 100644
 --- a/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/extensions/FastScrollerView.kt
-@@ -8,12 +8,41 @@ import org.fossify.commons.models.contacts.Contact
+@@ -8,12 +8,60 @@ import org.fossify.commons.models.contacts.Contact
  fun FastScrollerView.setupWithContacts(
      recyclerView: RecyclerView,
      contacts: List<Contact>,
 +    useStarForFavorites: Boolean = false,
++    favoriteCount: Int = 0,
  ) = setupWithRecyclerView(recyclerView, { position ->
-     val initialLetter = try {
+-    val initialLetter = try {
 -        contacts[position].getFirstLetter()
-+        val contact = contacts[position]
-+        if (useStarForFavorites && contact.starred == 1) {
-+            "*"
-+        } else {
-+            sanitizeFirstLetter(contact.getNameToDisplay())
-+        }
-     } catch (e: IndexOutOfBoundsException) {
+-    } catch (e: IndexOutOfBoundsException) {
++    val contactIndex = contactIndexForScroller(position, favoriteCount)
++    val initialLetter = if (contactIndex == -1) {
          ""
++    } else {
++        try {
++            val contact = contacts[contactIndex]
++            if (useStarForFavorites && contact.starred == 1) {
++                "*"
++            } else {
++                sanitizeFirstLetter(contact.getNameToDisplay())
++            }
++        } catch (e: IndexOutOfBoundsException) {
++            ""
++        }
      }
  
      FastScrollItemIndicator.Text(initialLetter)
  })
++
++// Mirrors the ContactsAdapter's separator offset: adapter positions include a leading
++// favorites block, a separator row, then the regular contacts.
++private fun contactIndexForScroller(position: Int, favoriteCount: Int): Int {
++    if (favoriteCount <= 0) {
++        return position
++    }
++    return when {
++        position < favoriteCount -> position
++        position == favoriteCount -> -1
++        else -> position - 1
++    }
++}
 +
 +// Returns the first real letter/digit of a name, skipping emojis and symbols.
 +private fun sanitizeFirstLetter(name: String): String {
@@ -551,7 +572,7 @@ index 57c5412c..84d48d69 100644
 +        cp in 0xFE00..0xFE0F || cp in 0xFE20..0xFE2F // variation selectors
 +}
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
-index 9a26a05f..ab003891 100644
+index 9a26a05f..7800cbad 100644
 --- a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 @@ -2,6 +2,7 @@ package org.fossify.phone.fragments
@@ -626,7 +647,7 @@ index 9a26a05f..ab003891 100644
                      itemClick = {
                          activity?.handleGenericContactClick(it as Contact)
                      },
-@@ -135,25 +154,90 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -135,29 +154,102 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                      }
                  ).apply {
                      binding.fragmentList.adapter = this
@@ -695,7 +716,7 @@ index 9a26a05f..ab003891 100644
 +        }
 +
 +        val map = orderList.withIndex().associate { it.value to it.index }
-+        return favorites.sortedBy { map[it.contactId.toString()] }
++        return favorites.sortedBy { map[it.contactId.toString()] ?: Int.MAX_VALUE }
 +    }
 +
 +    private fun saveCustomOrderToPrefs(items: List<Contact>) {
@@ -707,7 +728,8 @@ index 9a26a05f..ab003891 100644
 +    }
 +
      private fun setupLetterFastScroller(contacts: ArrayList<Contact>) {
-         binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
+-        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
++        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, favoriteCount = favoriteCount)
      }
  
      override fun onSearchClosed() {
@@ -720,7 +742,19 @@ index 9a26a05f..ab003891 100644
      }
  
      override fun onSearchQueryChanged(text: String) {
-@@ -178,7 +262,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+         val fixedText = text.trim().replace("\\s+".toRegex(), " ")
++        if (fixedText.isEmpty()) {
++            binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
++            val combined = buildCombinedList()
++            (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(combined, newFavoriteCount = favoriteCount)
++            setupLetterFastScroller(combined)
++            return
++        }
++
+         val shouldNormalize = fixedText.normalizeString() == fixedText
+         val filtered = allContacts.filter { contact ->
+             getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
+@@ -178,7 +270,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
          }
  
          binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
@@ -729,7 +763,7 @@ index 9a26a05f..ab003891 100644
          setupLetterFastScroller(filtered)
      }
  
-@@ -189,7 +273,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -189,7 +281,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                  binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
                  ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
                      activity?.runOnUiThread {
