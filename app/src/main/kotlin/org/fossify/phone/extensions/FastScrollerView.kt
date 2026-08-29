@@ -9,20 +9,39 @@ fun FastScrollerView.setupWithContacts(
     recyclerView: RecyclerView,
     contacts: List<Contact>,
     useStarForFavorites: Boolean = false,
+    favoriteCount: Int = 0,
 ) = setupWithRecyclerView(recyclerView, { position ->
-    val initialLetter = try {
-        val contact = contacts[position]
-        if (useStarForFavorites && contact.starred == 1) {
-            "*"
-        } else {
-            sanitizeFirstLetter(contact.getNameToDisplay())
-        }
-    } catch (e: IndexOutOfBoundsException) {
+    val contactIndex = contactIndexForScroller(position, favoriteCount)
+    val initialLetter = if (contactIndex == -1) {
         ""
+    } else {
+        try {
+            val contact = contacts[contactIndex]
+            if (useStarForFavorites && contact.starred == 1) {
+                "*"
+            } else {
+                sanitizeFirstLetter(contact.getNameToDisplay())
+            }
+        } catch (e: IndexOutOfBoundsException) {
+            ""
+        }
     }
 
     FastScrollItemIndicator.Text(initialLetter)
 })
+
+// Mirrors the ContactsAdapter's separator offset: adapter positions include a leading
+// favorites block, a separator row, then the regular contacts.
+private fun contactIndexForScroller(position: Int, favoriteCount: Int): Int {
+    if (favoriteCount <= 0) {
+        return position
+    }
+    return when {
+        position < favoriteCount -> position
+        position == favoriteCount -> -1
+        else -> position - 1
+    }
+}
 
 // Returns the first real letter/digit of a name, skipping emojis and symbols.
 private fun sanitizeFirstLetter(name: String): String {

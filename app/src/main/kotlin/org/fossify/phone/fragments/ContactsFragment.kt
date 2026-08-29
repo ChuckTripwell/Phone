@@ -218,7 +218,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         }
 
         val map = orderList.withIndex().associate { it.value to it.index }
-        return favorites.sortedBy { map[it.contactId.toString()] }
+        return favorites.sortedBy { map[it.contactId.toString()] ?: Int.MAX_VALUE }
     }
 
     private fun saveCustomOrderToPrefs(items: List<Contact>) {
@@ -230,7 +230,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     private fun setupLetterFastScroller(contacts: ArrayList<Contact>) {
-        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, favoriteCount = favoriteCount)
     }
 
     override fun onSearchClosed() {
@@ -242,6 +242,14 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
     override fun onSearchQueryChanged(text: String) {
         val fixedText = text.trim().replace("\\s+".toRegex(), " ")
+        if (fixedText.isEmpty()) {
+            binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
+            val combined = buildCombinedList()
+            (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(combined, newFavoriteCount = favoriteCount)
+            setupLetterFastScroller(combined)
+            return
+        }
+
         val shouldNormalize = fixedText.normalizeString() == fixedText
         val filtered = allContacts.filter { contact ->
             getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
