@@ -2,6 +2,10 @@
 
     <style name="AppTheme" parent="AppTheme.Base" />
 
+    <style name="FastScrollerTextAppearance" parent="@android:style/TextAppearance">
+        <item name="android:textSize">@dimen/fast_scroller_letter_size</item>
+    </style>
+
     <style name="DialpadButtonStyle">
         <item name="android:background">@drawable/pill_background</item>
         <item name="android:layout_marginStart">@dimen/small_margin</item>

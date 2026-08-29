@@ -86,14 +86,11 @@ jobs:
             This APK is built by applying the raw custom patch (`custom.patch`) on top of the latest upstream `main`.
 
             ### Changes from main:
-            - Merged favorites into contacts screen
-            - FAB changed to add-contact button
-            - Dialpad moved to bottom bar
-            - Green call button on contacts/favorites
-            - Bright violet color theme
-            - Black outline on calling screen text
-            - Hebrew font setting
-            - Long-press to reorder favorites
+            - Merged the favorites into a single contacts screen (favorites appear at the top)
+            - Long-press + drag a favorite to reorder it (custom order is remembered)
+            - Divider line separates favorites from the rest of the contacts
+            - Tiny gold star on the face icon marks each favorite
+            - Side letter fast-scroller on the left (full height, large letters, no emoji)
 
             ### Version: ${{ steps.version.outputs.version_name }} (build ${{ steps.version.outputs.version_code }})
           files: ${{ steps.find-apk.outputs.apk_path }}

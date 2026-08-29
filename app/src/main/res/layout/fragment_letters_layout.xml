@@ -5,7 +5,7 @@
     <RelativeLayout
         android:id="@+id/fragment_wrapper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
 
         <org.fossify.commons.views.MyTextView
             android:id="@+id/fragment_placeholder"
@@ -42,16 +42,19 @@
             android:clipToPadding="false"
             android:layoutAnimation="@anim/layout_animation"
             android:paddingBottom="@dimen/recyclerview_fab_padding"
+            android:paddingStart="@dimen/contacts_list_start_padding"
             android:scrollbars="none"
             app:layoutManager="org.fossify.commons.views.MyLinearLayoutManager" />
 
         <com.reddit.indicatorfastscroll.FastScrollerView
             android:id="@+id/letter_fastscroller"
             android:layout_width="32dp"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
             android:paddingTop="@dimen/big_margin"
-            android:paddingBottom="@dimen/big_margin" />
+            android:paddingBottom="@dimen/big_margin"
+            android:textAppearance="@style/FastScrollerTextAppearance" />
 
         <com.reddit.indicatorfastscroll.FastScrollerThumbView
             android:id="@+id/letter_fastscroller_thumb"
@@ -59,8 +62,8 @@
             android:layout_height="match_parent"
             android:layout_alignTop="@+id/letter_fastscroller"
             android:layout_alignBottom="@+id/letter_fastscroller"
-            android:layout_marginEnd="@dimen/activity_margin"
-            android:layout_toStartOf="@+id/letter_fastscroller" />
+            android:layout_marginStart="@dimen/activity_margin"
+            android:layout_toEndOf="@+id/letter_fastscroller" />
 
     </RelativeLayout>
 </merge>

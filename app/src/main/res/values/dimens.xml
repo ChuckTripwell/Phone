@@ -18,4 +18,10 @@
     <!-- keep these 2 values in dp to avoid scaling -->
     <dimen name="dialpad_text_size">28dp</dimen>
     <dimen name="dialpad_letters_text_size">12dp</dimen>
+
+    <!-- clears the fast-scroller on the left so list items don't sit under the letters -->
+    <dimen name="contacts_list_start_padding">32dp</dimen>
+
+    <!-- fast scroller letter size (bumped so the letters are easy to see; still fits narrow screens) -->
+    <dimen name="fast_scroller_letter_size">13sp</dimen>
 </resources>

@@ -17,8 +17,6 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import org.fossify.commons.adapters.MyRecyclerViewAdapter
-import org.fossify.commons.databinding.ItemContactWithoutNumberBinding
-import org.fossify.commons.databinding.ItemContactWithoutNumberGridBinding
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.extensions.*
@@ -30,12 +28,16 @@ import org.fossify.commons.models.contacts.Contact
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.phone.R
 import org.fossify.phone.activities.SimpleActivity
+import org.fossify.phone.databinding.ItemContactStarBinding
+import org.fossify.phone.databinding.ItemContactStarGridBinding
 import org.fossify.phone.extensions.areMultipleSIMsAvailable
 import org.fossify.phone.extensions.callContactWithSim
 import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.startContactDetailsIntent
 import org.fossify.phone.interfaces.RefreshItemsListener
 import java.util.Collections
+
+private const val VIEW_TYPE_SEPARATOR = Int.MIN_VALUE
 
 class ContactsAdapter(
     activity: SimpleActivity,
@@ -47,6 +49,7 @@ class ContactsAdapter(
     private val showDeleteButton: Boolean = true,
     private val enableDrag: Boolean = false,
     private val allowLongClick: Boolean = true,
+    var favoriteCount: Int = 0,
     itemClick: (Any) -> Unit,
     val profileIconClick: ((Any) -> Unit)? = null
 ) : MyRecyclerViewAdapter(activity, recyclerView, itemClick),
@@ -59,6 +62,25 @@ class ContactsAdapter(
     var onDragEndListener: (() -> Unit)? = null
     var onSpanCountListener: (Int) -> Unit = {}
 
+    // whether a separator row is shown after the favorite block
+    private fun hasSeparator() = favoriteCount > 0
+
+    // adapter position -> contact list index; returns -1 for the separator row
+    private fun contactIndexAt(position: Int): Int {
+        if (!hasSeparator()) {
+            return position
+        }
+        return when {
+            position < favoriteCount -> position
+            position == favoriteCount -> -1
+            else -> position - 1
+        }
+    }
+
+    // contact list index -> adapter position
+    private fun adapterPositionFor(index: Int): Int {
+        return if (hasSeparator() && index >= favoriteCount) index + 1 else index
+    }
 
     init {
         setupDragListener(true)
@@ -122,11 +144,17 @@ class ContactsAdapter(
 
     override fun getSelectableItemCount() = contacts.size
 
-    override fun getIsItemSelectable(position: Int) = true
+    override fun getIsItemSelectable(position: Int) = contactIndexAt(position) != -1
 
-    override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
+    override fun getItemSelectionKey(position: Int): Int? {
+        val index = contactIndexAt(position)
+        return if (index == -1) null else contacts.getOrNull(index)?.rawId
+    }
 
-    override fun getItemKeyPosition(key: Int) = contacts.indexOfFirst { it.rawId == key }
+    override fun getItemKeyPosition(key: Int): Int {
+        val index = contacts.indexOfFirst { it.rawId == key }
+        return if (index == -1) -1 else adapterPositionFor(index)
+    }
 
     @SuppressLint("NotifyDataSetChanged")
     override fun onActionModeCreated() {
@@ -139,24 +167,35 @@ class ContactsAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        if (viewType == VIEW_TYPE_SEPARATOR) {
+            val view = layoutInflater.inflate(R.layout.item_contact_separator, parent, false)
+            view.setOnClickListener(null)
+            view.setOnLongClickListener(null)
+            return createViewHolder(view)
+        }
         val binding = Binding.getByItemViewType(viewType).inflate(layoutInflater, parent, false)
         return createViewHolder(binding.root)
     }
 
     override fun getItemViewType(position: Int): Int {
-        return viewType
+        return if (contactIndexAt(position) == -1) VIEW_TYPE_SEPARATOR else viewType
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val contact = contacts[position]
+        val contactIndex = contactIndexAt(position)
+        if (contactIndex == -1) {
+            bindViewHolder(holder)
+            return
+        }
+        val contact = contacts[contactIndex]
         holder.bindView(contact, true, allowLongClick) { itemView, _ ->
-            val viewType = getItemViewType(position)
-            setupView(Binding.getByItemViewType(viewType).bind(itemView), contact, holder)
+            val itemViewType = getItemViewType(position)
+            setupView(Binding.getByItemViewType(itemViewType).bind(itemView), contact, holder)
         }
         bindViewHolder(holder)
     }
 
-    override fun getItemCount() = contacts.size
+    override fun getItemCount() = contacts.size + (if (hasSeparator()) 1 else 0)
 
     private fun getCabBlockContactTitle(callback: (String) -> Unit) {
         val contact = getSelectedItems().firstOrNull() ?: return callback("")
@@ -224,9 +263,10 @@ class ContactsAdapter(
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    fun updateItems(newItems: List<Contact>, highlightText: String = "") {
-        if (newItems.hashCode() != contacts.hashCode()) {
+    fun updateItems(newItems: List<Contact>, highlightText: String = "", newFavoriteCount: Int = favoriteCount) {
+        if (newItems.hashCode() != contacts.hashCode() || newFavoriteCount != favoriteCount) {
             contacts = ArrayList(newItems)
+            favoriteCount = newFavoriteCount
             textToHighlight = highlightText
             notifyDataSetChanged()
             finishActMode()
@@ -296,6 +336,9 @@ class ContactsAdapter(
         val contactsToRemove = getSelectedItems()
         val positions = getSelectedItemPositions()
         contacts.removeAll(contactsToRemove)
+        if (favoriteCount > 0) {
+            favoriteCount = contacts.takeWhile { it.starred == 1 }.size
+        }
         val idsToRemove = contactsToRemove.map { it.rawId }.toMutableList() as ArrayList<Int>
 
         SimpleContactsHelper(activity).deleteContactRawIDs(idsToRemove) {
@@ -352,6 +395,9 @@ class ContactsAdapter(
 
     override fun onViewRecycled(holder: ViewHolder) {
         super.onViewRecycled(holder)
+        if (holder.itemViewType == VIEW_TYPE_SEPARATOR) {
+            return
+        }
         if (!activity.isDestroyed && !activity.isFinishing) {
             Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
                 Glide.with(activity).clear(itemContactImage)
@@ -382,6 +428,8 @@ class ContactsAdapter(
                     }
                 }
             }
+
+            itemContactStar.beVisibleIf(contact.starred == 1)
 
             itemContactName.apply {
                 setTextColor(textColor)
@@ -416,7 +464,8 @@ class ContactsAdapter(
 
             if (enableDrag && textToHighlight.isEmpty()) {
                 dragHandleIcon.apply {
-                    beVisibleIf(selectedKeys.isNotEmpty())
+                    val isFavorite = favoriteCount == 0 || contacts.indexOf(contact) < favoriteCount
+                    beVisibleIf(selectedKeys.isNotEmpty() && isFavorite)
                     applyColorFilter(textColor)
                     setOnTouchListener { _, event ->
                         if (event.action == MotionEvent.ACTION_DOWN) {
@@ -427,7 +476,11 @@ class ContactsAdapter(
                 }
             } else {
                 dragHandleIcon.apply {
-                    beGone()
+                    if (viewType == VIEW_TYPE_GRID) {
+                        beVisible()
+                    } else {
+                        beGone()
+                    }
                     setOnTouchListener(null)
                 }
             }
@@ -439,15 +492,26 @@ class ContactsAdapter(
     }
 
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
+        val fromIndex = contactIndexAt(fromPosition)
+        val toIndex = contactIndexAt(toPosition)
+        if (fromIndex == -1 || toIndex == -1) {
+            return
+        }
+
+        // only favorites (the leading block) can be dragged
+        if (favoriteCount > 0 && (fromIndex >= favoriteCount || toIndex >= favoriteCount)) {
+            return
+        }
+
         activity.config.isCustomOrderSelected = true
 
         if (fromPosition < toPosition) {
             for (i in fromPosition until toPosition) {
-                Collections.swap(contacts, i, i + 1)
+                Collections.swap(contacts, contactIndexAt(i), contactIndexAt(i + 1))
             }
         } else {
             for (i in fromPosition downTo toPosition + 1) {
-                Collections.swap(contacts, i, i - 1)
+                Collections.swap(contacts, contactIndexAt(i), contactIndexAt(i - 1))
             }
         }
 
@@ -498,21 +562,21 @@ class ContactsAdapter(
 
         data object ItemContactGrid : Binding {
             override fun inflate(layoutInflater: LayoutInflater, viewGroup: ViewGroup, attachToRoot: Boolean): ItemViewBinding {
-                return ItemContactGridBindingAdapter(ItemContactWithoutNumberGridBinding.inflate(layoutInflater, viewGroup, attachToRoot))
+                return ItemContactGridBindingAdapter(ItemContactStarGridBinding.inflate(layoutInflater, viewGroup, attachToRoot))
             }
 
             override fun bind(view: View): ItemViewBinding {
-                return ItemContactGridBindingAdapter(ItemContactWithoutNumberGridBinding.bind(view))
+                return ItemContactGridBindingAdapter(ItemContactStarGridBinding.bind(view))
             }
         }
 
         data object ItemContact : Binding {
             override fun inflate(layoutInflater: LayoutInflater, viewGroup: ViewGroup, attachToRoot: Boolean): ItemViewBinding {
-                return ItemContactBindingAdapter(ItemContactWithoutNumberBinding.inflate(layoutInflater, viewGroup, attachToRoot))
+                return ItemContactBindingAdapter(ItemContactStarBinding.inflate(layoutInflater, viewGroup, attachToRoot))
             }
 
             override fun bind(view: View): ItemViewBinding {
-                return ItemContactBindingAdapter(ItemContactWithoutNumberBinding.bind(view))
+                return ItemContactBindingAdapter(ItemContactStarBinding.bind(view))
             }
         }
     }
@@ -522,22 +586,25 @@ class ContactsAdapter(
         val itemContactImage: ImageView
         val itemContactFrame: ConstraintLayout
         val dragHandleIcon: ImageView
+        val itemContactStar: ImageView
     }
 
-    private class ItemContactGridBindingAdapter(val binding: ItemContactWithoutNumberGridBinding) : ItemViewBinding {
+    private class ItemContactGridBindingAdapter(val binding: ItemContactStarGridBinding) : ItemViewBinding {
         override val itemContactName = binding.itemContactName
         override val itemContactImage = binding.itemContactImage
         override val itemContactFrame = binding.itemContactFrame
         override val dragHandleIcon = binding.dragHandleIcon
+        override val itemContactStar = binding.itemContactStar
 
         override fun getRoot(): View = binding.root
     }
 
-    private class ItemContactBindingAdapter(val binding: ItemContactWithoutNumberBinding) : ItemViewBinding {
+    private class ItemContactBindingAdapter(val binding: ItemContactStarBinding) : ItemViewBinding {
         override val itemContactName = binding.itemContactName
         override val itemContactImage = binding.itemContactImage
         override val itemContactFrame = binding.itemContactFrame
         override val dragHandleIcon = binding.dragHandleIcon
+        override val itemContactStar = binding.itemContactStar
 
         override fun getRoot(): View = binding.root
     }

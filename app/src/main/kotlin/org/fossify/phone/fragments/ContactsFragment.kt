@@ -2,6 +2,7 @@ package org.fossify.phone.fragments
 
 import android.content.Context
 import android.util.AttributeSet
+import com.google.gson.Gson
 import org.fossify.commons.adapters.MyRecyclerViewAdapter
 import org.fossify.commons.extensions.areSystemAnimationsEnabled
 import org.fossify.commons.extensions.baseConfig
@@ -15,17 +16,22 @@ import org.fossify.commons.extensions.hasPermission
 import org.fossify.commons.extensions.normalizeString
 import org.fossify.commons.extensions.underlineText
 import org.fossify.commons.helpers.ContactsHelper
+import org.fossify.commons.helpers.Converters
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.PERMISSION_READ_CONTACTS
 import org.fossify.commons.helpers.SMT_PRIVATE
+import org.fossify.commons.helpers.VIEW_TYPE_GRID
 import org.fossify.commons.helpers.getProperText
 import org.fossify.commons.models.contacts.Contact
+import org.fossify.commons.views.MyGridLayoutManager
+import org.fossify.commons.views.MyLinearLayoutManager
 import org.fossify.phone.R
 import org.fossify.phone.activities.MainActivity
 import org.fossify.phone.activities.SimpleActivity
 import org.fossify.phone.adapters.ContactsAdapter
 import org.fossify.phone.databinding.FragmentContactsBinding
 import org.fossify.phone.databinding.FragmentLettersLayoutBinding
+import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.handleGenericContactClick
 import org.fossify.phone.extensions.launchCreateNewContactIntent
 import org.fossify.phone.extensions.setupWithContacts
@@ -36,6 +42,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     RefreshItemsListener {
     private lateinit var binding: FragmentLettersLayoutBinding
     private var allContacts = ArrayList<Contact>()
+    private var favoriteCount = 0
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -100,10 +107,18 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             (activity as MainActivity).cacheContacts()
 
             activity?.runOnUiThread {
-                gotContacts(contacts)
+                gotContacts(buildCombinedList())
                 callback?.invoke()
             }
         }
+    }
+
+    private fun buildCombinedList(): ArrayList<Contact> {
+        val favorites = allContacts.filter { it.starred == 1 }
+        val favoritesOrdered = sortByCustomOrder(favorites)
+        val regulars = allContacts.filter { it.starred != 1 }
+        favoriteCount = favoritesOrdered.size
+        return (favoritesOrdered + regulars) as ArrayList<Contact>
     }
 
     private fun gotContacts(contacts: ArrayList<Contact>) {
@@ -127,6 +142,10 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                     contacts = contacts,
                     recyclerView = binding.fragmentList,
                     refreshItemsListener = this,
+                    showDeleteButton = true,
+                    enableDrag = favoriteCount > 0,
+                    viewType = activity!!.config.viewType,
+                    favoriteCount = favoriteCount,
                     itemClick = {
                         activity?.handleGenericContactClick(it as Contact)
                     },
@@ -135,14 +154,78 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                     }
                 ).apply {
                     binding.fragmentList.adapter = this
+
+                    onDragEndListener = {
+                        val adapter = binding.fragmentList.adapter
+                        if (adapter is ContactsAdapter) {
+                            val favorites = adapter.contacts.take(favoriteCount)
+                            saveCustomOrderToPrefs(favorites)
+                        }
+                    }
                 }
 
+                updateListLayout()
                 if (context.areSystemAnimationsEnabled) {
                     binding.fragmentList.scheduleLayoutAnimation()
                 }
             } else {
-                (binding.fragmentList.adapter as ContactsAdapter).updateItems(contacts)
+                (binding.fragmentList.adapter as ContactsAdapter).updateItems(contacts, newFavoriteCount = favoriteCount)
             }
+        }
+    }
+
+    private fun updateListLayout() {
+        val currAdapter = binding.fragmentList.adapter as? ContactsAdapter ?: return
+        val viewType = activity!!.config.viewType
+        currAdapter.viewType = viewType
+
+        val spanCount = activity!!.config.contactsGridColumnCount
+        val layoutManager = if (viewType == VIEW_TYPE_GRID) {
+            binding.letterFastscroller.beGone()
+            MyGridLayoutManager(context, spanCount)
+        } else {
+            binding.letterFastscroller.beVisible()
+            MyLinearLayoutManager(context)
+        }
+        binding.fragmentList.layoutManager = layoutManager
+    }
+
+    fun columnCountChanged() {
+        (binding.fragmentList.layoutManager as? MyGridLayoutManager)?.spanCount = activity!!.config.contactsGridColumnCount
+        updateListLayout()
+        binding.fragmentList.adapter?.apply {
+            notifyItemRangeChanged(0, itemCount)
+        }
+    }
+
+    fun viewTypeChanged() {
+        updateListLayout()
+        binding.fragmentList.adapter?.apply {
+            notifyDataSetChanged()
+        }
+    }
+
+    private fun sortByCustomOrder(favorites: List<Contact>): List<Contact> {
+        val favoritesOrder = activity!!.config.favoritesContactsOrder
+
+        if (favoritesOrder.isEmpty()) {
+            return favorites
+        }
+
+        val orderList = Converters().jsonToStringList(favoritesOrder)
+        if (orderList.isEmpty()) {
+            return favorites
+        }
+
+        val map = orderList.withIndex().associate { it.value to it.index }
+        return favorites.sortedBy { map[it.contactId.toString()] }
+    }
+
+    private fun saveCustomOrderToPrefs(items: List<Contact>) {
+        activity?.apply {
+            val orderIds = items.map { it.contactId }
+            val orderGsonString = Gson().toJson(orderIds)
+            config.favoritesContactsOrder = orderGsonString
         }
     }
 
@@ -152,8 +235,9 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
     override fun onSearchClosed() {
         binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
-        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(allContacts)
-        setupLetterFastScroller(allContacts)
+        val combined = buildCombinedList()
+        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(combined, newFavoriteCount = favoriteCount)
+        setupLetterFastScroller(combined)
     }
 
     override fun onSearchQueryChanged(text: String) {
@@ -178,7 +262,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         }
 
         binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
-        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText)
+        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText, 0)
         setupLetterFastScroller(filtered)
     }
 
@@ -189,7 +273,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                 binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
                 ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
                     activity?.runOnUiThread {
-                        gotContacts(contacts)
+                        gotContacts(buildCombinedList())
                     }
                 }
             }

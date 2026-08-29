@@ -37,7 +37,6 @@ import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.handleFullScreenNotificationsPermission
 import org.fossify.phone.extensions.launchCreateNewContactIntent
 import org.fossify.phone.fragments.ContactsFragment
-import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
@@ -129,7 +128,6 @@ class MainActivity : SimpleActivity() {
         val configStartNameWithSurname = config.startNameWithSurname
         if (storedStartNameWithSurname != configStartNameWithSurname) {
             getContactsFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
-            getFavoritesFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
             storedStartNameWithSurname = config.startNameWithSurname
         }
 
@@ -200,8 +198,8 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
             findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment()
             findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
-            findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
-            findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
+            findItem(R.id.change_view_type).isVisible = currentFragment == getContactsFragment()
+            findItem(R.id.column_count).isVisible = currentFragment == getContactsFragment() && config.viewType == VIEW_TYPE_GRID
             findItem(R.id.more_apps_from_us).isVisible = !resources.getBoolean(R.bool.hide_google_relations)
         }
     }
@@ -226,7 +224,7 @@ class MainActivity : SimpleActivity() {
                 when (menuItem.itemId) {
                     R.id.clear_call_history -> clearCallHistory()
                     R.id.create_new_contact -> launchCreateNewContactIntent()
-                    R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() is FavoritesFragment)
+                    R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() == getContactsFragment())
                     R.id.filter -> showFilterDialog()
                     R.id.more_apps_from_us -> launchMoreAppsFromUsIntent()
                     R.id.settings -> launchSettings()
@@ -251,7 +249,7 @@ class MainActivity : SimpleActivity() {
             val newColumnCount = it as Int
             if (currentColumnCount != newColumnCount) {
                 config.contactsGridColumnCount = newColumnCount
-                getFavoritesFragment()?.columnCountChanged()
+                getContactsFragment()?.columnCountChanged()
             }
         }
     }
@@ -259,7 +257,8 @@ class MainActivity : SimpleActivity() {
     private fun changeViewType() {
         ChangeViewTypeDialog(this) {
             refreshMenuItems()
-            getFavoritesFragment()?.refreshItems()
+            getContactsFragment()?.viewTypeChanged()
+            getContactsFragment()?.refreshItems()
         }
     }
 
@@ -338,10 +337,6 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_person_vector)
         }
 
-        if (showTabs and TAB_FAVORITES != 0) {
-            icons.add(R.drawable.ic_star_vector)
-        }
-
         if (showTabs and TAB_CALL_HISTORY != 0) {
             icons.add(R.drawable.ic_clock_filled_vector)
         }
@@ -355,10 +350,6 @@ class MainActivity : SimpleActivity() {
 
         if (showTabs and TAB_CONTACTS != 0) {
             icons.add(R.drawable.ic_person_outline_vector)
-        }
-
-        if (showTabs and TAB_FAVORITES != 0) {
-            icons.add(R.drawable.ic_star_outline_vector)
         }
 
         if (showTabs and TAB_CALL_HISTORY != 0) {
@@ -448,10 +439,12 @@ class MainActivity : SimpleActivity() {
         storedStartNameWithSurname = config.startNameWithSurname
     }
 
+    private fun getShownTabValue(index: Int): Int =
+        tabsList.filter { it and config.showTabs != 0 }.getOrElse(index) { TAB_CALL_HISTORY }
+
     private fun getTabIcon(position: Int): Drawable {
-        val drawableId = when (position) {
-            0 -> R.drawable.ic_person_vector
-            1 -> R.drawable.ic_star_vector
+        val drawableId = when (getShownTabValue(position)) {
+            TAB_CONTACTS -> R.drawable.ic_person_vector
             else -> R.drawable.ic_clock_vector
         }
 
@@ -459,9 +452,8 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun getTabLabel(position: Int): String {
-        val stringId = when (position) {
-            0 -> R.string.contacts_tab
-            1 -> R.string.favorites_tab
+        val stringId = when (getShownTabValue(position)) {
+            TAB_CONTACTS -> R.string.contacts_tab
             else -> R.string.call_history_tab
         }
 
@@ -476,7 +468,8 @@ class MainActivity : SimpleActivity() {
         binding.apply {
             if (viewPager.adapter == null) {
                 viewPager.adapter = ViewPagerAdapter(this@MainActivity)
-                viewPager.currentItem = if (openLastTab) config.lastUsedViewPagerPage else getDefaultTab()
+                viewPager.currentItem = (if (openLastTab) config.lastUsedViewPagerPage else getDefaultTab())
+                    .coerceIn(0, (binding.mainTabsHolder.tabCount - 1).coerceAtLeast(0))
                 viewPager.onGlobalLayout {
                     refreshFragments()
                 }
@@ -495,7 +488,6 @@ class MainActivity : SimpleActivity() {
     fun refreshFragments() {
         cacheContacts()
         getContactsFragment()?.refreshItems()
-        getFavoritesFragment()?.refreshItems()
         getRecentsFragment()?.refreshItems()
     }
 
@@ -505,10 +497,6 @@ class MainActivity : SimpleActivity() {
 
         if (showTabs and TAB_CONTACTS > 0) {
             fragments.add(getContactsFragment())
-        }
-
-        if (showTabs and TAB_FAVORITES > 0) {
-            fragments.add(getFavoritesFragment())
         }
 
         if (showTabs and TAB_CALL_HISTORY > 0) {
@@ -522,34 +510,20 @@ class MainActivity : SimpleActivity() {
 
     private fun getContactsFragment(): ContactsFragment? = findViewById(R.id.contacts_fragment)
 
-    private fun getFavoritesFragment(): FavoritesFragment? = findViewById(R.id.favorites_fragment)
-
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
 
     private fun getDefaultTab(): Int {
-        val showTabsMask = config.showTabs
+        val shownTabs = tabsList.filter { it and config.showTabs != 0 }
         return when (config.defaultTab) {
             TAB_LAST_USED -> if (config.lastUsedViewPagerPage < binding.mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
-            TAB_CONTACTS -> 0
-            TAB_FAVORITES -> if (showTabsMask and TAB_CONTACTS > 0) 1 else 0
+            TAB_CONTACTS, TAB_FAVORITES -> {
+                // favorites were merged into the contacts tab
+                val index = shownTabs.indexOf(TAB_CONTACTS)
+                if (index == -1) 0 else index
+            }
             else -> {
-                if (showTabsMask and TAB_CALL_HISTORY > 0) {
-                    if (showTabsMask and TAB_CONTACTS > 0) {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            2
-                        } else {
-                            1
-                        }
-                    } else {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                } else {
-                    0
-                }
+                val index = shownTabs.indexOf(TAB_CALL_HISTORY)
+                if (index == -1) 0 else index
             }
         }
     }
@@ -579,12 +553,6 @@ class MainActivity : SimpleActivity() {
 
     private fun showSortingDialog(showCustomSorting: Boolean) {
         ChangeSortingDialog(this, showCustomSorting) {
-            getFavoritesFragment()?.refreshItems {
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
-
             getContactsFragment()?.refreshItems {
                 if (binding.mainMenu.isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
@@ -595,12 +563,6 @@ class MainActivity : SimpleActivity() {
 
     private fun showFilterDialog() {
         FilterContactSourcesDialog(this) {
-            getFavoritesFragment()?.refreshItems {
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
-
             getContactsFragment()?.refreshItems {
                 if (binding.mainMenu.isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
