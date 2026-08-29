@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
-import android.graphics.Typeface
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
@@ -28,7 +27,6 @@ import androidx.core.view.setPadding
 import androidx.core.view.updatePadding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
-import java.io.File
 import org.fossify.commons.extensions.*
 import org.fossify.commons.helpers.*
 import org.fossify.commons.models.SimpleListItem
@@ -83,8 +81,6 @@ class CallActivity : SimpleActivity() {
         )
 
         updateTextColors(binding.callHolder)
-        applyHebrewFontToCallerText()
-        setupCallBackgroundGif()
         initButtons()
         audioManager.mode = AudioManager.MODE_IN_CALL
         addLockScreenFlags()
@@ -137,11 +133,11 @@ class CallActivity : SimpleActivity() {
             callRightArrow.beGone()
 
             callDecline.setOnClickListener {
-                acceptCall()
+                endCall()
             }
 
             callAccept.setOnClickListener {
-                endCall()
+                acceptCall()
             }
         } else {
             handleSwipe()
@@ -322,8 +318,8 @@ class CallActivity : SimpleActivity() {
                 callRightArrow.setImageResource(R.drawable.ic_chevron_left_vector)
             }
 
-            callLeftArrow.applyColorFilter(getColor(R.color.md_green_400))
-            callRightArrow.applyColorFilter(getColor(R.color.md_red_400))
+            callLeftArrow.applyColorFilter(getColor(R.color.md_red_400))
+            callRightArrow.applyColorFilter(getColor(R.color.md_green_400))
 
             startArrowAnimation(callLeftArrow, initialLeftArrowX, initialLeftArrowScaleX, initialLeftArrowScaleY, leftArrowTranslation)
             startArrowAnimation(callRightArrow, initialRightArrowX, initialRightArrowScaleX, initialRightArrowScaleY, rightArrowTranslation)
@@ -366,9 +362,9 @@ class CallActivity : SimpleActivity() {
                                 lock = true
                                 callDraggable.performHapticFeedback()
                                 if (isRtl) {
-                                    acceptCall()
-                                } else {
                                     endCall()
+                                } else {
+                                    acceptCall()
                                 }
                             }
                         }
@@ -378,9 +374,9 @@ class CallActivity : SimpleActivity() {
                                 lock = true
                                 callDraggable.performHapticFeedback()
                                 if (isRtl) {
-                                    endCall()
-                                } else {
                                     acceptCall()
+                                } else {
+                                    endCall()
                                 }
                             }
                         }
@@ -388,9 +384,9 @@ class CallActivity : SimpleActivity() {
                         callDraggable.x > initialDraggableX -> {
                             lock = false
                             val drawableRes = if (isRtl) {
-                                R.drawable.ic_phone_green_vector
-                            } else {
                                 R.drawable.ic_phone_down_red_vector
+                            } else {
+                                R.drawable.ic_phone_green_vector
                             }
                             callDraggable.setImageDrawable(getDrawable(drawableRes))
                         }
@@ -398,9 +394,9 @@ class CallActivity : SimpleActivity() {
                         callDraggable.x <= initialDraggableX -> {
                             lock = false
                             val drawableRes = if (isRtl) {
-                                R.drawable.ic_phone_down_red_vector
-                            } else {
                                 R.drawable.ic_phone_green_vector
+                            } else {
+                                R.drawable.ic_phone_down_red_vector
                             }
                             callDraggable.setImageDrawable(getDrawable(drawableRes))
                         }
@@ -568,48 +564,10 @@ class CallActivity : SimpleActivity() {
         }
     }
 
-    private fun applyHebrewFontToCallerText() {
-        val typeface = getHebrewFontTypeface()
-        binding.apply {
-            this@CallActivity.applyFontToTextView(callerNameLabel, typeface, true)
-            this@CallActivity.applyFontToTextView(callerNumber, typeface, true)
-            this@CallActivity.applyFontToTextView(onHoldCallerName, typeface, true)
-        }
-    }
-
-    private fun getHebrewFontTypeface(): Typeface {
-        return HebrewFontHelper.getHebrewTypeface(this)
-    }
-
-    private fun setupCallBackgroundGif() {
-        val gifPath = config.callBackgroundGif
-        if (gifPath.isEmpty()) {
-            binding.callBackgroundGif.beGone()
-            binding.callBackgroundGifScrim.beGone()
-            return
-        }
-
-        val file = File(gifPath)
-        if (!file.exists()) {
-            binding.callBackgroundGif.beGone()
-            binding.callBackgroundGifScrim.beGone()
-            return
-        }
-
-        binding.apply {
-            callBackgroundGif.beVisible()
-            callBackgroundGifScrim.beVisible()
-            Glide.with(this@CallActivity)
-                .asGif()
-                .load(file)
-                .apply(RequestOptions().centerCrop().override(1920, 1920))
-                .into(callBackgroundGif)
-        }
-    }
-
     private fun toggleHold() {
         val isOnHold = CallManager.toggleHold()
         toggleButtonColor(binding.callToggleHold, isOnHold)
+        binding.callToggleHold.contentDescription = getString(if (isOnHold) R.string.resume_call else R.string.hold_call)
         binding.holdStatusLabel.beInvisibleIf(!isOnHold)
     }
 
@@ -684,7 +642,7 @@ class CallActivity : SimpleActivity() {
                         val rippleBg = resources.getDrawable(R.drawable.ic_call_accept, theme) as RippleDrawable
                         val layerDrawable = rippleBg.findDrawableByLayerId(R.id.accept_call_background_holder) as LayerDrawable
                         layerDrawable.setDrawableByLayerId(R.id.accept_call_icon, getDrawable(acceptDrawableId))
-                        binding.callDecline.setImageDrawable(rippleBg)
+                        binding.callAccept.setImageDrawable(rippleBg)
                     }
                 }
             }

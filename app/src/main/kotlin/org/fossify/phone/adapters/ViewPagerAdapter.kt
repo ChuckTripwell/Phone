@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.viewpager.widget.PagerAdapter
 import org.fossify.commons.helpers.TAB_CALL_HISTORY
 import org.fossify.commons.helpers.TAB_CONTACTS
+import org.fossify.commons.helpers.TAB_FAVORITES
 import org.fossify.phone.R
 import org.fossify.phone.activities.SimpleActivity
 import org.fossify.phone.extensions.config
@@ -29,7 +30,7 @@ class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
         container.removeView(item as View)
     }
 
-    override fun getCount() = tabsList.filter { it and activity.config.showTabs != 0 }.size + 1
+    override fun getCount() = tabsList.filter { it and activity.config.showTabs != 0 }.size
 
     override fun isViewFromObject(view: View, item: Any) = view == item
 
@@ -40,11 +41,13 @@ class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
             fragments.add(R.layout.fragment_contacts)
         }
 
+        if (showTabs and TAB_FAVORITES > 0) {
+            fragments.add(R.layout.fragment_favorites)
+        }
+
         if (showTabs and TAB_CALL_HISTORY > 0) {
             fragments.add(R.layout.fragment_recents)
         }
-
-        fragments.add(R.layout.fragment_dialpad)
 
         return if (position < fragments.size) fragments[position] else fragments.last()
     }

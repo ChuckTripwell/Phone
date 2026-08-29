@@ -4,22 +4,4 @@
     <color name="color_missed_call">@color/md_red_500_dark</color>
     <color name="color_outgoing_call">@color/md_green_600</color>
     <color name="color_incoming_call">@color/md_blue_600</color>
-
-    <color name="color_primary">#9C27B0</color>
-    <color name="color_primary_dark">#7B1FA2</color>
-    <color name="color_accent">#E040FB</color>
-    <color name="color_primary_light">#CE93D8</color>
-
-    <color name="call_green_icon">#2E7D32</color>
-    <color name="call_green_bg">#A5D6A7</color>
-    <color name="call_green_ripple">#664CAF50</color>
-
-    <color name="contacts_separator">#FF000000</color>
-
-    <color name="favorite_name_gold">#FFC107</color>
-
-    <!-- permanent text-color fix: light mode => black text, dark mode => white text.
-         (commons pins default_text_color to the dark variant for all modes, making
-         English text invisible on light backgrounds; this override restores it) -->
-    <color name="default_text_color">#FF000000</color>
 </resources>

@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.snackbar.Snackbar
 import me.grantland.widget.AutofitHelper
+import org.fossify.commons.dialogs.ChangeViewTypeDialog
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
@@ -36,7 +37,7 @@ import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.handleFullScreenNotificationsPermission
 import org.fossify.phone.extensions.launchCreateNewContactIntent
 import org.fossify.phone.fragments.ContactsFragment
-import org.fossify.phone.fragments.DialpadFragment
+import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
@@ -49,7 +50,7 @@ import org.greenrobot.eventbus.ThreadMode
 
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
-
+    
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
     private var launchedDialer = false
@@ -115,9 +116,8 @@ class MainActivity : SimpleActivity() {
 
         updateMenuColors()
         val properPrimaryColor = getProperPrimaryColor()
-
-        val addContactIcon = resources.getColoredDrawableWithColor(R.drawable.ic_person_add_vector, properPrimaryColor.getContrastColor())
-        binding.mainDialpadButton.setImageDrawable(addContactIcon)
+        val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
+        binding.mainDialpadButton.setImageDrawable(dialpadIcon)
 
         updateTextColors(binding.mainHolder)
         setupTabColors()
@@ -129,6 +129,7 @@ class MainActivity : SimpleActivity() {
         val configStartNameWithSurname = config.startNameWithSurname
         if (storedStartNameWithSurname != configStartNameWithSurname) {
             getContactsFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
+            getFavoritesFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
             storedStartNameWithSurname = config.startNameWithSurname
         }
 
@@ -158,6 +159,7 @@ class MainActivity : SimpleActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
         super.onActivityResult(requestCode, resultCode, resultData)
+        // we don't really care about the result, the app can work without being the default Dialer too
         if (requestCode == REQUEST_CODE_SET_DEFAULT_DIALER) {
             checkContactPermissions()
         } else if (requestCode == REQUEST_CODE_SET_DEFAULT_CALLER_ID && resultCode != Activity.RESULT_OK) {
@@ -198,6 +200,8 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
             findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment()
             findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
+            findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
+            findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
             findItem(R.id.more_apps_from_us).isVisible = !resources.getBoolean(R.bool.hide_google_relations)
         }
     }
@@ -222,15 +226,40 @@ class MainActivity : SimpleActivity() {
                 when (menuItem.itemId) {
                     R.id.clear_call_history -> clearCallHistory()
                     R.id.create_new_contact -> launchCreateNewContactIntent()
-                    R.id.sort -> showSortingDialog()
+                    R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() is FavoritesFragment)
                     R.id.filter -> showFilterDialog()
                     R.id.more_apps_from_us -> launchMoreAppsFromUsIntent()
                     R.id.settings -> launchSettings()
+                    R.id.change_view_type -> changeViewType()
+                    R.id.column_count -> changeColumnCount()
                     R.id.about -> launchAbout()
                     else -> return@setOnMenuItemClickListener false
                 }
                 return@setOnMenuItemClickListener true
             }
+        }
+    }
+
+    private fun changeColumnCount() {
+        val items = ArrayList<RadioItem>()
+        for (i in 1..CONTACTS_GRID_MAX_COLUMNS_COUNT) {
+            items.add(RadioItem(i, resources.getQuantityString(R.plurals.column_counts, i, i)))
+        }
+
+        val currentColumnCount = config.contactsGridColumnCount
+        RadioGroupDialog(this, ArrayList(items), currentColumnCount) {
+            val newColumnCount = it as Int
+            if (currentColumnCount != newColumnCount) {
+                config.contactsGridColumnCount = newColumnCount
+                getFavoritesFragment()?.columnCountChanged()
+            }
+        }
+    }
+
+    private fun changeViewType() {
+        ChangeViewTypeDialog(this) {
+            refreshMenuItems()
+            getFavoritesFragment()?.refreshItems()
         }
     }
 
@@ -287,12 +316,10 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun setupTabColors() {
-        val tabIconsCount = getSelectedTabDrawableIds().size
-        val activeIndex = binding.viewPager.currentItem
-        val activeView = binding.mainTabsHolder.getTabAt(activeIndex)?.customView
-        updateBottomTabItemColors(activeView, true, getSelectedTabDrawableIds()[activeIndex])
+        val activeView = binding.mainTabsHolder.getTabAt(binding.viewPager.currentItem)?.customView
+        updateBottomTabItemColors(activeView, true, getSelectedTabDrawableIds()[binding.viewPager.currentItem])
 
-        (0 until tabIconsCount).filter { it != activeIndex }.forEach { index ->
+        getInactiveTabIndexes(binding.viewPager.currentItem).forEach { index ->
             val inactiveView = binding.mainTabsHolder.getTabAt(index)?.customView
             updateBottomTabItemColors(inactiveView, false, getDeselectedTabDrawableIds()[index])
         }
@@ -300,6 +327,8 @@ class MainActivity : SimpleActivity() {
         val bottomBarColor = getBottomNavigationBackgroundColor()
         binding.mainTabsHolder.setBackgroundColor(bottomBarColor)
     }
+
+    private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filter { it != activeIndex }
 
     private fun getSelectedTabDrawableIds(): List<Int> {
         val showTabs = config.showTabs
@@ -309,11 +338,13 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_person_vector)
         }
 
+        if (showTabs and TAB_FAVORITES != 0) {
+            icons.add(R.drawable.ic_star_vector)
+        }
+
         if (showTabs and TAB_CALL_HISTORY != 0) {
             icons.add(R.drawable.ic_clock_filled_vector)
         }
-
-        icons.add(R.drawable.ic_dialpad_vector)
 
         return icons
     }
@@ -326,11 +357,13 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_person_outline_vector)
         }
 
+        if (showTabs and TAB_FAVORITES != 0) {
+            icons.add(R.drawable.ic_star_outline_vector)
+        }
+
         if (showTabs and TAB_CALL_HISTORY != 0) {
             icons.add(R.drawable.ic_clock_vector)
         }
-
-        icons.add(R.drawable.ic_dialpad_vector)
 
         return icons
     }
@@ -351,12 +384,14 @@ class MainActivity : SimpleActivity() {
             }
         })
 
+        // selecting the proper tab sometimes glitches, add an extra selector to make sure we have it right
         binding.mainTabsHolder.onGlobalLayout {
             Handler().postDelayed({
                 var wantedTab = getDefaultTab()
 
+                // open the Recents tab if we got here by clicking a missed call notification
                 if (intent.action == Intent.ACTION_VIEW && config.showTabs and TAB_CALL_HISTORY > 0) {
-                    wantedTab = getHistoryTabIndex()
+                    wantedTab = binding.mainTabsHolder.tabCount - 1
                 }
 
                 binding.mainTabsHolder.getTabAt(wantedTab)?.select()
@@ -365,7 +400,7 @@ class MainActivity : SimpleActivity() {
         }
 
         binding.mainDialpadButton.setOnClickListener {
-            launchCreateNewContactIntent()
+            launchDialpad()
         }
 
         binding.viewPager.onGlobalLayout {
@@ -373,7 +408,7 @@ class MainActivity : SimpleActivity() {
         }
 
         if (config.openDialPadAtLaunch && !launchedDialer) {
-            binding.mainTabsHolder.getTabAt(binding.mainTabsHolder.tabCount - 1)?.select()
+            launchDialpad()
             launchedDialer = true
         }
     }
@@ -392,35 +427,23 @@ class MainActivity : SimpleActivity() {
             }
         }
 
-        binding.mainTabsHolder.newTab().setCustomView(R.layout.bottom_tablayout_item).apply {
-            customView?.findViewById<ImageView>(R.id.tab_item_icon)?.setImageDrawable(
-                resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, getProperTextColor())
-            )
-            customView?.findViewById<TextView>(R.id.tab_item_label)?.text = getString(R.string.dialpad)
-            AutofitHelper.create(customView?.findViewById(R.id.tab_item_label))
-            binding.mainTabsHolder.addTab(this)
-        }
-
         binding.mainTabsHolder.onTabSelectionChanged(
             tabUnselectedAction = {
-                if (it.position < getSelectedTabDrawableIds().size) {
-                    updateBottomTabItemColors(it.customView, false, getDeselectedTabDrawableIds()[it.position])
-                }
+                updateBottomTabItemColors(it.customView, false, getDeselectedTabDrawableIds()[it.position])
             },
             tabSelectedAction = {
                 getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
                 binding.viewPager.currentItem = it.position
-                if (it.position < getSelectedTabDrawableIds().size) {
-                    updateBottomTabItemColors(it.customView, true, getSelectedTabDrawableIds()[it.position])
-                }
+                updateBottomTabItemColors(it.customView, true, getSelectedTabDrawableIds()[it.position])
 
-                if (config.showTabs and TAB_CALL_HISTORY > 0 && it.position == getHistoryTabIndex()) {
+                val lastPosition = binding.mainTabsHolder.tabCount - 1
+                if (it.position == lastPosition && config.showTabs and TAB_CALL_HISTORY > 0) {
                     clearMissedCalls()
                 }
             }
         )
 
-        binding.mainTabsHolder.beGoneIf(binding.mainTabsHolder.tabCount == 0)
+        binding.mainTabsHolder.beGoneIf(binding.mainTabsHolder.tabCount == 1)
         storedShowTabs = config.showTabs
         storedStartNameWithSurname = config.startNameWithSurname
     }
@@ -428,6 +451,7 @@ class MainActivity : SimpleActivity() {
     private fun getTabIcon(position: Int): Drawable {
         val drawableId = when (position) {
             0 -> R.drawable.ic_person_vector
+            1 -> R.drawable.ic_star_vector
             else -> R.drawable.ic_clock_vector
         }
 
@@ -437,6 +461,7 @@ class MainActivity : SimpleActivity() {
     private fun getTabLabel(position: Int): String {
         val stringId = when (position) {
             0 -> R.string.contacts_tab
+            1 -> R.string.favorites_tab
             else -> R.string.call_history_tab
         }
 
@@ -470,6 +495,7 @@ class MainActivity : SimpleActivity() {
     fun refreshFragments() {
         cacheContacts()
         getContactsFragment()?.refreshItems()
+        getFavoritesFragment()?.refreshItems()
         getRecentsFragment()?.refreshItems()
     }
 
@@ -481,11 +507,13 @@ class MainActivity : SimpleActivity() {
             fragments.add(getContactsFragment())
         }
 
+        if (showTabs and TAB_FAVORITES > 0) {
+            fragments.add(getFavoritesFragment())
+        }
+
         if (showTabs and TAB_CALL_HISTORY > 0) {
             fragments.add(getRecentsFragment())
         }
-
-        fragments.add(getDialpadFragment())
 
         return fragments
     }
@@ -494,23 +522,30 @@ class MainActivity : SimpleActivity() {
 
     private fun getContactsFragment(): ContactsFragment? = findViewById(R.id.contacts_fragment)
 
+    private fun getFavoritesFragment(): FavoritesFragment? = findViewById(R.id.favorites_fragment)
+
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
-
-    private fun getDialpadFragment(): DialpadFragment? = findViewById(R.id.dialpad_fragment)
-
-    private fun getHistoryTabIndex(): Int = if (config.showTabs and TAB_CONTACTS != 0) 1 else 0
 
     private fun getDefaultTab(): Int {
         val showTabsMask = config.showTabs
         return when (config.defaultTab) {
             TAB_LAST_USED -> if (config.lastUsedViewPagerPage < binding.mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
             TAB_CONTACTS -> 0
+            TAB_FAVORITES -> if (showTabsMask and TAB_CONTACTS > 0) 1 else 0
             else -> {
                 if (showTabsMask and TAB_CALL_HISTORY > 0) {
                     if (showTabsMask and TAB_CONTACTS > 0) {
-                        1
+                        if (showTabsMask and TAB_FAVORITES > 0) {
+                            2
+                        } else {
+                            1
+                        }
                     } else {
-                        0
+                        if (showTabsMask and TAB_FAVORITES > 0) {
+                            1
+                        } else {
+                            0
+                        }
                     }
                 } else {
                     0
@@ -542,8 +577,14 @@ class MainActivity : SimpleActivity() {
         startAboutActivity(R.string.app_name, licenses, BuildConfig.VERSION_NAME, faqItems, true)
     }
 
-    private fun showSortingDialog() {
-        ChangeSortingDialog(this, showCustomSorting = true) {
+    private fun showSortingDialog(showCustomSorting: Boolean) {
+        ChangeSortingDialog(this, showCustomSorting) {
+            getFavoritesFragment()?.refreshItems {
+                if (binding.mainMenu.isSearchOpen) {
+                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
+                }
+            }
+
             getContactsFragment()?.refreshItems {
                 if (binding.mainMenu.isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
@@ -554,6 +595,12 @@ class MainActivity : SimpleActivity() {
 
     private fun showFilterDialog() {
         FilterContactSourcesDialog(this) {
+            getFavoritesFragment()?.refreshItems {
+                if (binding.mainMenu.isSearchOpen) {
+                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
+                }
+            }
+
             getContactsFragment()?.refreshItems {
                 if (binding.mainMenu.isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())

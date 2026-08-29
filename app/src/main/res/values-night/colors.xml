@@ -3,18 +3,4 @@
     <color name="color_missed_call">@color/md_red_400</color>
     <color name="color_outgoing_call">@color/md_green_300</color>
     <color name="color_incoming_call">@color/md_blue_300</color>
-
-    <color name="color_primary">#CE93D8</color>
-    <color name="color_primary_dark">#9C27B0</color>
-    <color name="color_accent">#EA80FC</color>
-    <color name="color_primary_light">#F3E5F5</color>
-
-    <color name="call_green_icon">#81C784</color>
-    <color name="call_green_bg">#2E7D32</color>
-    <color name="call_green_ripple">#664CAF50</color>
-
-    <color name="contacts_separator">#99FFFFFF</color>
-
-    <!-- permanent text-color fix: dark mode => white text (see values/colors.xml) -->
-    <color name="default_text_color">#FFFFFFFF</color>
 </resources>

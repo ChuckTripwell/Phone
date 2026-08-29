@@ -135,16 +135,4 @@ class Config(context: Context) : BaseConfig(context) {
     var alwaysShowFullscreen: Boolean
         get() = prefs.getBoolean(ALWAYS_SHOW_FULLSCREEN, false)
         set(alwaysShowFullscreen) = prefs.edit().putBoolean(ALWAYS_SHOW_FULLSCREEN, alwaysShowFullscreen).apply()
-
-    var hebrewFontType: Int
-        get() = prefs.getInt(HEBREW_FONT_PATH, 0)
-        set(fontType) = prefs.edit().putInt(HEBREW_FONT_PATH, fontType).apply()
-
-    var hebrewFontFile: String
-        get() = prefs.getString(HEBREW_FONT_FILE, "") ?: ""
-        set(fontFile) = prefs.edit().putString(HEBREW_FONT_FILE, fontFile).apply()
-
-    var callBackgroundGif: String
-        get() = prefs.getString(CALL_BACKGROUND_GIF, "") ?: ""
-        set(gifPath) = prefs.edit().putString(CALL_BACKGROUND_GIF, gifPath).apply()
 }

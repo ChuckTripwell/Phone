@@ -269,19 +269,8 @@
             style="@style/DialpadNumberStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true"
+            android:layout_centerInParent="true"
             android:text="*" />
-
-        <org.fossify.commons.views.MyTextView
-            android:id="@+id/dialpad_asterisk_letters"
-            style="@style/DialpadLetterStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/dialpad_asterisk"
-            android:layout_centerHorizontal="true"
-            android:layout_marginBottom="@dimen/small_margin"
-            android:text="=" />
     </RelativeLayout>
 
     <RelativeLayout

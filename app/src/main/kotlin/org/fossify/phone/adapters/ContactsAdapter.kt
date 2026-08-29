@@ -3,7 +3,6 @@ package org.fossify.phone.adapters
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ShortcutInfo
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.text.TextUtils
@@ -12,14 +11,11 @@ import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
-import com.bumptech.glide.request.RequestOptions
 import org.fossify.commons.adapters.MyRecyclerViewAdapter
 import org.fossify.commons.databinding.ItemContactWithoutNumberBinding
 import org.fossify.commons.databinding.ItemContactWithoutNumberGridBinding
@@ -34,7 +30,6 @@ import org.fossify.commons.models.contacts.Contact
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.phone.R
 import org.fossify.phone.activities.SimpleActivity
-import org.fossify.phone.helpers.HebrewFontHelper
 import org.fossify.phone.extensions.areMultipleSIMsAvailable
 import org.fossify.phone.extensions.callContactWithSim
 import org.fossify.phone.extensions.config
@@ -64,8 +59,13 @@ class ContactsAdapter(
     var onDragEndListener: (() -> Unit)? = null
     var onSpanCountListener: (Int) -> Unit = {}
 
+
     init {
-        setupDragListener(false)
+        setupDragListener(true)
+
+        if (recyclerView.layoutManager is GridLayoutManager) {
+            setupZoomListener(this)
+        }
 
         if (enableDrag) {
             touchHelper = ItemTouchHelper(ItemMoveCallback(this, viewType == VIEW_TYPE_GRID))
@@ -91,12 +91,6 @@ class ContactsAdapter(
             findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
             findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
 
-            val isFavoriteSelected = isOneItemSelected && getSelectedItems().firstOrNull()?.starred == 1
-            findItem(R.id.cab_toggle_favorite).isVisible = isOneItemSelected
-            findItem(R.id.cab_toggle_favorite).title = activity.getString(
-                if (isFavoriteSelected) R.string.remove_from_favorites else R.string.add_to_favorites
-            )
-
             findItem(R.id.cab_delete).isVisible = showDeleteButton
             findItem(R.id.cab_create_shortcut).title = activity.addLockedLabelIfNeeded(R.string.create_shortcut)
             findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected && isOreoPlus()
@@ -121,7 +115,6 @@ class ContactsAdapter(
             R.id.cab_delete -> askConfirmDelete()
             R.id.cab_send_sms -> sendSMS()
             R.id.cab_view_details -> viewContactDetails()
-            R.id.cab_toggle_favorite -> toggleFavorites()
             R.id.cab_create_shortcut -> tryCreateShortcut()
             R.id.cab_select_all -> selectAll()
         }
@@ -159,7 +152,6 @@ class ContactsAdapter(
         holder.bindView(contact, true, allowLongClick) { itemView, _ ->
             val viewType = getItemViewType(position)
             setupView(Binding.getByItemViewType(viewType).bind(itemView), contact, holder)
-            HebrewFontHelper.applyHebrewFontToHierarchy(itemView, activity)
         }
         bindViewHolder(holder)
     }
@@ -320,22 +312,6 @@ class ContactsAdapter(
 
     private fun getSelectedItems() = contacts.filter { selectedKeys.contains(it.rawId) } as ArrayList<Contact>
 
-    private fun toggleFavorites() {
-        val selected = getSelectedItems()
-        if (selected.isEmpty()) return
-
-        val helper = ContactsHelper(activity)
-        val favorites = selected.filter { it.starred == 1 }
-        val nonFavorites = selected.filter { it.starred != 1 }
-        if (favorites.isNotEmpty()) {
-            helper.removeFavorites(favorites as ArrayList<Contact>)
-        }
-        if (nonFavorites.isNotEmpty()) {
-            helper.addFavorites(nonFavorites as ArrayList<Contact>)
-        }
-        refreshItemsListener?.refreshItems()
-    }
-
     private fun getSelectedPhoneNumber(): String? {
         return getSelectedItems().firstOrNull()?.getPrimaryNumber()
     }
@@ -379,18 +355,8 @@ class ContactsAdapter(
         if (!activity.isDestroyed && !activity.isFinishing) {
             Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
                 Glide.with(activity).clear(itemContactImage)
-                itemContactFrame.findViewById<View>(R.id.contact_star_button)?.let { starButton ->
-                    (starButton.getTag(R.id.contact_star_button) as? Runnable)?.let {
-                        starButton.removeCallbacks(it)
-                    }
-                    starButton.setTag(R.id.contact_star_button, null)
-                }
             }
         }
-    }
-
-    private fun isFavoriteAtPosition(position: Int): Boolean {
-        return contacts.getOrNull(position)?.starred == 1
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -401,7 +367,7 @@ class ContactsAdapter(
 
             itemContactImage.apply {
                 if (profileIconClick != null && viewType != VIEW_TYPE_GRID) {
-                    setBackgroundResource(R.drawable.selector_clickable)
+                    setBackgroundResource(R.drawable.selector_clickable_circle)
 
                     setOnClickListener {
                         if (!actModeCallback.isSelectable) {
@@ -410,7 +376,7 @@ class ContactsAdapter(
                             holder.viewClicked(contact)
                         }
                     }
-                    setOnLongClickListener { view ->
+                    setOnLongClickListener {
                         holder.viewLongClicked()
                         true
                     }
@@ -418,13 +384,7 @@ class ContactsAdapter(
             }
 
             itemContactName.apply {
-                setTextColor(
-                    if (contact.starred == 1) {
-                        ContextCompat.getColor(activity, R.color.favorite_name_gold)
-                    } else {
-                        textColor
-                    }
-                )
+                setTextColor(textColor)
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
 
                 val name = contact.getNameToDisplay()
@@ -454,179 +414,26 @@ class ContactsAdapter(
                 }
             }
 
-            dragHandleIcon.beGone()
-            dragHandleIcon.setOnTouchListener(null)
-
-            setupCallButton(binding, contact)
-            setupStarButton(binding, contact, holder)
-            positionDragHandle(binding, contact.starred == 1)
-
-            if (!activity.isDestroyed) {
-                loadSquareContactImage(contact, itemContactImage)
-            }
-        }
-    }
-
-    private fun positionDragHandle(binding: ItemViewBinding, isFavorite: Boolean) {
-        try {
-            val set = ConstraintSet()
-            set.clone(binding.itemContactFrame)
-            val gap = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-            set.connect(R.id.contact_star_button, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-            set.clear(R.id.contact_star_button, ConstraintSet.END)
-            set.connect(binding.itemContactImage.id, ConstraintSet.START, R.id.contact_star_button, ConstraintSet.END, gap)
-            set.connect(R.id.contact_call_button, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, gap)
-            set.clear(R.id.contact_call_button, ConstraintSet.START)
-            set.connect(binding.itemContactName.id, ConstraintSet.END, R.id.contact_call_button, ConstraintSet.START, gap)
-            set.applyTo(binding.itemContactFrame)
-        } catch (ignored: Exception) {
-        }
-    }
-
-    private fun loadSquareContactImage(contact: Contact, imageView: ImageView) {
-        val letterDrawable = BitmapDrawable(
-            activity.resources,
-            SimpleContactsHelper(activity).getContactLetterIcon(contact.getNameToDisplay())
-        )
-        val uri = contact.photoUri
-        if (uri.isNullOrEmpty()) {
-            imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-            imageView.setImageDrawable(letterDrawable)
-        } else {
-            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-            Glide.with(activity)
-                .load(uri)
-                .apply(RequestOptions().centerCrop().placeholder(letterDrawable).error(letterDrawable))
-                .into(imageView)
-        }
-    }
-
-    private fun setupCallButton(binding: ItemViewBinding, contact: Contact) {
-        var callButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_call_button)
-        if (callButton == null) {
-            callButton = ImageView(activity).apply {
-                id = R.id.contact_call_button
-                val drawable = ContextCompat.getDrawable(activity, R.drawable.ic_phone_green_call)
-                setImageDrawable(drawable)
-                background = ContextCompat.getDrawable(activity, R.drawable.call_button_background_green)
-                val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-                setPadding(padding, padding, padding, padding)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-
-                val size = activity.resources.getDimensionPixelSize(R.dimen.call_button_size)
-                layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    topToTop = ConstraintSet.PARENT_ID
-                    bottomToBottom = ConstraintSet.PARENT_ID
-                }
-            }
-            binding.itemContactFrame.addView(callButton)
-        }
-
-        callButton.setOnClickListener {
-            val number = contact.getPrimaryNumber()
-            if (!number.isNullOrEmpty()) {
-                activity.handlePermission(PERMISSION_CALL_PHONE) { hasPermission ->
-                    val action = if (hasPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
-                    val intent = Intent(action).apply {
-                        data = Uri.fromParts("tel", number, null)
-                    }
-                    activity.startActivity(intent)
-                }
-            }
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupStarButton(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
-        var starButton = binding.itemContactFrame.findViewById<ImageView>(R.id.contact_star_button)
-        if (starButton == null) {
-            starButton = ImageView(activity).apply {
-                id = R.id.contact_star_button
-                val padding = activity.resources.getDimensionPixelSize(R.dimen.small_margin)
-                setPadding(padding, padding, padding, padding)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-
-                val size = activity.resources.getDimensionPixelSize(R.dimen.star_button_size)
-                layoutParams = ConstraintLayout.LayoutParams(size, size).apply {
-                    topToTop = ConstraintSet.PARENT_ID
-                    bottomToBottom = ConstraintSet.PARENT_ID
-                }
-            }
-            binding.itemContactFrame.addView(starButton)
-        }
-
-        starButton.setImageDrawable(
-            ContextCompat.getDrawable(
-                activity,
-                if (contact.starred == 1) R.drawable.ic_star_gold else R.drawable.ic_star_outline_gold
-            )
-        )
-
-        val isFavorite = contact.starred == 1
-        if (isFavorite) {
-            starButton.setOnClickListener(null)
-            val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-            var longPressed = false
-            val longPressRunnable = Runnable {
-                longPressed = true
-                holder.viewLongClicked()
-            }
-            starButton.setOnTouchListener { v, event ->
-                if (actModeCallback.isSelectable) {
-                    v.performClick()
-                    return@setOnTouchListener true
-                }
-
-                var downX = 0f
-                var downY = 0f
-                var downTime = 0L
-                var dragged = false
-                val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
-                v.setTag(R.id.contact_star_button, longPressRunnable)
-
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        downX = event.x
-                        downY = event.y
-                        downTime = event.eventTime
-                        dragged = false
-                        longPressed = false
-                        v.removeCallbacks(longPressRunnable)
-                        v.postDelayed(longPressRunnable, longPressTimeout)
-                        true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (kotlin.math.hypot(event.x - downX, event.y - downY) > touchSlop) {
-                            dragged = true
-                            v.removeCallbacks(longPressRunnable)
+            if (enableDrag && textToHighlight.isEmpty()) {
+                dragHandleIcon.apply {
+                    beVisibleIf(selectedKeys.isNotEmpty())
+                    applyColorFilter(textColor)
+                    setOnTouchListener { _, event ->
+                        if (event.action == MotionEvent.ACTION_DOWN) {
                             startReorderDragListener?.requestDrag(holder)
                         }
-                        true
+                        false
                     }
-                    MotionEvent.ACTION_UP -> {
-                        v.removeCallbacks(longPressRunnable)
-                        if (!dragged && !longPressed && (event.eventTime - downTime) < longPressTimeout) {
-                            ContactsHelper(activity).removeFavorites(arrayListOf(contact))
-                            refreshItemsListener?.refreshItems()
-                        }
-                        v.performClick()
-                        true
-                    }
-                    MotionEvent.ACTION_CANCEL -> {
-                        v.removeCallbacks(longPressRunnable)
-                        true
-                    }
-                    else -> true
+                }
+            } else {
+                dragHandleIcon.apply {
+                    beGone()
+                    setOnTouchListener(null)
                 }
             }
 
-        } else {
-            starButton.setOnTouchListener(null)
-            starButton.setOnClickListener {
-                if (!actModeCallback.isSelectable) {
-                    ContactsHelper(activity).addFavorites(arrayListOf(contact))
-                    refreshItemsListener?.refreshItems()
-                }
+            if (!activity.isDestroyed) {
+                SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
             }
         }
     }
@@ -634,30 +441,17 @@ class ContactsAdapter(
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
         activity.config.isCustomOrderSelected = true
 
-        val boundary = if (contacts.isEmpty()) {
-            0
-        } else {
-            val firstRegular = contacts.indexOfFirst { it.starred != 1 }
-            if (firstRegular == -1) contacts.size else firstRegular
-        }
-
-        val target = if (fromPosition < boundary) {
-            toPosition.coerceIn(0, (boundary - 1).coerceAtLeast(0))
-        } else {
-            toPosition.coerceIn(boundary, (contacts.size - 1).coerceAtLeast(boundary))
-        }
-
-        if (fromPosition < target) {
-            for (i in fromPosition until target) {
+        if (fromPosition < toPosition) {
+            for (i in fromPosition until toPosition) {
                 Collections.swap(contacts, i, i + 1)
             }
         } else {
-            for (i in fromPosition downTo target + 1) {
+            for (i in fromPosition downTo toPosition + 1) {
                 Collections.swap(contacts, i, i - 1)
             }
         }
 
-        notifyItemMoved(fromPosition, target)
+        notifyItemMoved(fromPosition, toPosition)
     }
 
     override fun onRowSelected(myViewHolder: ViewHolder?) {}

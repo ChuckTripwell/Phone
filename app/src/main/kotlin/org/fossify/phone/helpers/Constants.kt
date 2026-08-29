@@ -2,6 +2,7 @@ package org.fossify.phone.helpers
 
 import org.fossify.commons.helpers.TAB_CALL_HISTORY
 import org.fossify.commons.helpers.TAB_CONTACTS
+import org.fossify.commons.helpers.TAB_FAVORITES
 
 // shared prefs
 const val SPEED_DIAL = "speed_dial"
@@ -18,13 +19,10 @@ const val DIALPAD_VIBRATION = "dialpad_vibration"
 const val DIALPAD_BEEPS = "dialpad_beeps"
 const val HIDE_DIALPAD_NUMBERS = "hide_dialpad_numbers"
 const val ALWAYS_SHOW_FULLSCREEN = "always_show_fullscreen"
-const val HEBREW_FONT_PATH = "hebrew_font_path"
-const val HEBREW_FONT_FILE = "hebrew_font_file_path"
-const val CALL_BACKGROUND_GIF = "call_background_gif"
 
-const val ALL_TABS_MASK = TAB_CONTACTS or TAB_CALL_HISTORY
+const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
 
-val tabsList = arrayListOf(TAB_CONTACTS, TAB_CALL_HISTORY)
+val tabsList = arrayListOf(TAB_CONTACTS, TAB_FAVORITES, TAB_CALL_HISTORY)
 
 private const val PATH = "org.fossify.phone.action."
 const val ACCEPT_CALL = PATH + "ACCEPT_CALL"

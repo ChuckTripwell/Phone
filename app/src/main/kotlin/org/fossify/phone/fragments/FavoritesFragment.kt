@@ -142,6 +142,10 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
                         setupLetterFastScroller(items)
                     }
                 }
+
+                onSpanCountListener = { newSpanCount ->
+                    context.config.contactsGridColumnCount = newSpanCount
+                }
             }
 
             if (context.areSystemAnimationsEnabled) {
@@ -150,6 +154,13 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
         } else {
             currAdapter.viewType = viewType
             currAdapter.updateItems(allContacts)
+        }
+    }
+
+    fun columnCountChanged() {
+        (binding.fragmentList.layoutManager as? MyGridLayoutManager)?.spanCount = context!!.config.contactsGridColumnCount
+        binding.fragmentList.adapter?.apply {
+            notifyItemRangeChanged(0, allContacts.size)
         }
     }
 

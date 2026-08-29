@@ -61,7 +61,6 @@ import org.fossify.phone.extensions.getDayCode
 import org.fossify.phone.extensions.startAddContactIntent
 import org.fossify.phone.extensions.startCallWithConfirmationCheck
 import org.fossify.phone.extensions.startContactDetailsIntent
-import org.fossify.phone.helpers.HebrewFontHelper
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.interfaces.RefreshItemsListener
 import org.fossify.phone.models.CallLogItem
@@ -466,7 +465,7 @@ class RecentCallsAdapter(
     private inner class RecentCallViewHolder(val binding: ItemRecentCallBinding) : ViewHolder(binding.root) {
         fun bind(call: RecentCall) = bindView(
             item = call,
-            allowSingleClick = false,
+            allowSingleClick = refreshItemsListener != null && !call.isUnknownNumber,
             allowLongClick = refreshItemsListener != null && !call.isUnknownNumber
         ) { _, _ ->
             binding.apply {
@@ -512,6 +511,7 @@ class RecentCallsAdapter(
                     text = nameToShow
                     setTextColor(textColor)
                     setTextSize(TypedValue.COMPLEX_UNIT_PX, currentFontSize)
+                    isSelected = true
                 }
 
                 itemRecentsDateTime.apply {
@@ -606,15 +606,6 @@ class RecentCallsAdapter(
 
                 itemRecentsType.setImageDrawable(drawable)
 
-                itemRecentsCallButton.setImageDrawable(resources.getDrawable(R.drawable.ic_call_green_button))
-                itemRecentsCallButton.setOnClickListener {
-                    if (actModeCallback.isSelectable) {
-                        viewClicked(call)
-                    } else {
-                        (activity as SimpleActivity).startCallWithConfirmationCheck(call.phoneNumber, call.name)
-                    }
-                }
-
                 overflowMenuIcon.beVisibleIf(showOverflowMenu)
                 overflowMenuIcon.drawable.apply {
                     mutate()
@@ -624,8 +615,6 @@ class RecentCallsAdapter(
                 overflowMenuIcon.setOnClickListener {
                     showPopupMenu(overflowMenuAnchor, call)
                 }
-
-                HebrewFontHelper.applyHebrewFontToHierarchy(root, activity)
             }
         }
     }

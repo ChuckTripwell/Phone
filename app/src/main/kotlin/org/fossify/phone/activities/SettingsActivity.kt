@@ -1,7 +1,6 @@
 package org.fossify.phone.activities
 
 import android.content.Intent
-import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
@@ -15,10 +14,8 @@ import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.baseConfig
 import org.fossify.commons.extensions.beVisibleIf
-import org.fossify.commons.extensions.getFilenameFromUri
 import org.fossify.commons.extensions.getFontSizeText
 import org.fossify.commons.extensions.getProperPrimaryColor
-import org.fossify.commons.extensions.isFontFile
 import org.fossify.commons.extensions.isOrWasThankYouInstalled
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.toast
@@ -28,12 +25,12 @@ import org.fossify.commons.helpers.FONT_SIZE_EXTRA_LARGE
 import org.fossify.commons.helpers.FONT_SIZE_LARGE
 import org.fossify.commons.helpers.FONT_SIZE_MEDIUM
 import org.fossify.commons.helpers.FONT_SIZE_SMALL
-import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.NavigationIcon
 import org.fossify.commons.helpers.ON_CLICK_CALL_CONTACT
 import org.fossify.commons.helpers.ON_CLICK_VIEW_CONTACT
 import org.fossify.commons.helpers.TAB_CALL_HISTORY
 import org.fossify.commons.helpers.TAB_CONTACTS
+import org.fossify.commons.helpers.TAB_FAVORITES
 import org.fossify.commons.helpers.TAB_LAST_USED
 import org.fossify.commons.helpers.isNougatPlus
 import org.fossify.commons.helpers.isQPlus
@@ -48,21 +45,12 @@ import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.launchAccountsConfiguration
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.models.RecentCall
-import java.io.File
 import java.util.Locale
 import kotlin.system.exitProcess
 
 class SettingsActivity : SimpleActivity() {
     companion object {
         private const val CALL_HISTORY_FILE_TYPE = "application/json"
-        private const val HEBREW_FONT_CUSTOM = 3
-        private val FONT_FILE_MIME_TYPES = arrayOf(
-            "font/ttf",
-            "font/otf",
-            "application/x-font-ttf",
-            "application/x-font-otf",
-            "*/*"
-        )
         private val IMPORT_CALL_HISTORY_FILE_TYPES = buildList {
             add("application/json")
             if (!isQPlus()) {
@@ -90,20 +78,6 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private val fontFilePicker =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                handleHebrewFontFile(uri)
-            }
-        }
-
-    private val gifFilePicker =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                handleCallBackgroundGif(uri)
-            }
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
@@ -127,8 +101,6 @@ class SettingsActivity : SimpleActivity() {
         setupManageSpeedDial()
         setupChangeDateTimeFormat()
         setupFontSize()
-        setupHebrewFont()
-        setupCallBackgroundGif()
         setupManageShownTabs()
         setupDefaultTab()
         setupOnContactClick()
@@ -257,164 +229,6 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupHebrewFont() {
-        binding.settingsHebrewFont.text = getHebrewFontText()
-        binding.settingsHebrewFontHolder.setOnClickListener {
-            val items = arrayListOf(
-                RadioItem(0, getString(R.string.font_default)),
-                RadioItem(1, getString(R.string.font_serif)),
-                RadioItem(2, getString(R.string.font_monospace)),
-                RadioItem(HEBREW_FONT_CUSTOM, getString(org.fossify.commons.R.string.select_font_file))
-            )
-            val currentFont = config.hebrewFontType
-            RadioGroupDialog(this@SettingsActivity, items, currentFont) { newValue ->
-                val selected = newValue as Int
-                if (selected == HEBREW_FONT_CUSTOM) {
-                    fontFilePicker.launch(FONT_FILE_MIME_TYPES)
-                } else {
-                    config.hebrewFontType = selected
-                    binding.settingsHebrewFont.text = getHebrewFontText()
-                }
-            }
-        }
-    }
-
-    private fun getHebrewFontText(): String {
-        return when (config.hebrewFontType) {
-            0 -> getString(R.string.font_default)
-            1 -> getString(R.string.font_serif)
-            2 -> getString(R.string.font_monospace)
-            HEBREW_FONT_CUSTOM ->
-                if (config.hebrewFontFile.isEmpty()) {
-                    getString(org.fossify.commons.R.string.select_font_file)
-                } else {
-                    config.hebrewFontFile
-                }
-            else -> getString(R.string.font_default)
-        }
-    }
-
-    private fun handleHebrewFontFile(uri: Uri) {
-        val fileName = getFilenameFromUri(uri)
-        if (fileName.isEmpty() || !fileName.isFontFile()) {
-            toast(org.fossify.commons.R.string.invalid_font_file)
-            return
-        }
-
-        val bytes = try {
-            contentResolver.openInputStream(uri)?.readBytes()
-        } catch (ignored: Exception) {
-            null
-        }
-
-        if (bytes == null || bytes.isEmpty()) {
-            toast(org.fossify.commons.R.string.invalid_font_file)
-            return
-        }
-
-        try {
-            val tempFile = File(cacheDir, fileName)
-            tempFile.writeBytes(bytes)
-            Typeface.createFromFile(tempFile)
-            tempFile.delete()
-        } catch (ignored: Exception) {
-            toast(org.fossify.commons.R.string.invalid_font_file)
-            return
-        }
-
-        FontHelper.saveFontData(this, bytes, fileName)
-        config.hebrewFontFile = fileName
-        config.hebrewFontType = HEBREW_FONT_CUSTOM
-        binding.settingsHebrewFont.text = getHebrewFontText()
-    }
-
-    private fun setupCallBackgroundGif() {
-        binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
-        binding.settingsCallBackgroundGifHolder.setOnClickListener {
-            val items = arrayListOf(
-                RadioItem(0, getString(R.string.gif_none)),
-                RadioItem(1, getString(R.string.select_gif))
-            )
-            RadioGroupDialog(this@SettingsActivity, items, if (config.callBackgroundGif.isEmpty()) 0 else 1) { newValue ->
-                val selected = newValue as Int
-                if (selected == 0) {
-                    clearCallBackgroundGif()
-                } else {
-                    gifFilePicker.launch(arrayOf("image/gif", "*/*"))
-                }
-            }
-        }
-    }
-
-    private fun getCallBackgroundGifText(): String {
-        return if (config.callBackgroundGif.isEmpty()) {
-            getString(R.string.gif_none)
-        } else {
-            "${getString(R.string.gif_picked)}  ${File(config.callBackgroundGif).name}"
-        }
-    }
-
-    private fun handleCallBackgroundGif(uri: Uri) {
-        val fileName = getFilenameFromUri(uri)
-        if (fileName.isEmpty()) {
-            toast(R.string.invalid_gif_file)
-            return
-        }
-
-        val bytes = try {
-            contentResolver.openInputStream(uri)?.readBytes()
-        } catch (ignored: Exception) {
-            null
-        }
-
-        if (bytes == null || bytes.isEmpty()) {
-            toast(R.string.invalid_gif_file)
-            return
-        }
-
-        // GIF signature: 47 49 46 38 ("GIF8")
-        val isGif = bytes.size >= 6 &&
-            bytes[0] == 'G'.code.toByte() &&
-            bytes[1] == 'I'.code.toByte() &&
-            bytes[2] == 'F'.code.toByte() &&
-            bytes[3] == '8'.code.toByte()
-
-        if (!isGif) {
-            toast(R.string.invalid_gif_file)
-            return
-        }
-
-        try {
-            val file = File(gifBackgroundsDir(), fileName)
-            file.writeBytes(bytes)
-            config.callBackgroundGif = file.absolutePath
-            binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
-            toast(R.string.saved)
-        } catch (ignored: Exception) {
-            toast(R.string.invalid_gif_file)
-        }
-    }
-
-    private fun clearCallBackgroundGif() {
-        val path = config.callBackgroundGif
-        if (path.isNotEmpty()) {
-            try {
-                File(path).delete()
-            } catch (ignored: Exception) {
-            }
-        }
-        config.callBackgroundGif = ""
-        binding.settingsCallBackgroundGif.text = getCallBackgroundGifText()
-    }
-
-    private fun gifBackgroundsDir(): File {
-        val dir = File(filesDir, "call_backgrounds")
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
-        return dir
-    }
-
     private fun setupManageShownTabs() {
         binding.settingsManageTabsHolder.setOnClickListener {
             ManageVisibleTabsDialog(this)
@@ -426,6 +240,7 @@ class SettingsActivity : SimpleActivity() {
         binding.settingsDefaultTabHolder.setOnClickListener {
             val items = arrayListOf(
                 RadioItem(TAB_CONTACTS, getString(R.string.contacts_tab)),
+                RadioItem(TAB_FAVORITES, getString(R.string.favorites_tab)),
                 RadioItem(TAB_CALL_HISTORY, getString(R.string.call_history_tab)),
                 RadioItem(TAB_LAST_USED, getString(R.string.last_used_tab))
             )
@@ -440,6 +255,7 @@ class SettingsActivity : SimpleActivity() {
     private fun getDefaultTabText() = getString(
         when (baseConfig.defaultTab) {
             TAB_CONTACTS -> R.string.contacts_tab
+            TAB_FAVORITES -> R.string.favorites_tab
             TAB_CALL_HISTORY -> R.string.call_history_tab
             else -> R.string.last_used_tab
         }
