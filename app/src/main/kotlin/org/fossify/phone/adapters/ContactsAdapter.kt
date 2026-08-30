@@ -131,6 +131,20 @@ class ContactsAdapter(
             findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected && isOreoPlus()
             findItem(R.id.cab_view_details).isVisible = isOneItemSelected
             findItem(R.id.cab_block_unblock_contact).isVisible = isOneItemSelected && isNougatPlus()
+
+            val selectedFavorites = getSelectedItems().count { it.starred == 1 }
+            val allFavorites = selectedFavorites > 0 && selectedFavorites == selectedKeys.size
+            findItem(R.id.cab_favorite).apply {
+                isVisible = isOneItemSelected
+                if (allFavorites) {
+                    setIcon(R.drawable.ic_star_outline_vector)
+                    setTitle(R.string.remove_from_favorites)
+                } else {
+                    setIcon(R.drawable.ic_star_vector)
+                    setTitle(R.string.add_to_favorites)
+                }
+            }
+
             getCabBlockContactTitle { title ->
                 findItem(R.id.cab_block_unblock_contact).title = title
             }
@@ -150,6 +164,7 @@ class ContactsAdapter(
             R.id.cab_delete -> askConfirmDelete()
             R.id.cab_send_sms -> sendSMS()
             R.id.cab_view_details -> viewContactDetails()
+            R.id.cab_favorite -> toggleFavoritesForSelected()
             R.id.cab_create_shortcut -> tryCreateShortcut()
             R.id.cab_select_all -> selectAll()
         }
@@ -367,6 +382,29 @@ class ContactsAdapter(
     }
 
     private fun getSelectedItems() = contacts.filter { selectedKeys.contains(it.rawId) } as ArrayList<Contact>
+
+    private fun toggleFavoritesForSelected() {
+        val selectedItems = getSelectedItems()
+        if (selectedItems.isEmpty()) {
+            return
+        }
+
+        val addAll = selectedItems.any { it.starred != 1 }
+
+        activity.handlePermission(PERMISSION_WRITE_CONTACTS) {
+            val helper = ContactsHelper(activity)
+            if (addAll) {
+                helper.addFavorites(selectedItems)
+            } else {
+                helper.removeFavorites(selectedItems)
+            }
+
+            activity.runOnUiThread {
+                finishActMode()
+                refreshItemsListener?.refreshItems()
+            }
+        }
+    }
 
     private fun getSelectedPhoneNumber(): String? {
         return getSelectedItems().firstOrNull()?.getPrimaryNumber()
