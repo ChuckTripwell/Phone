@@ -1,8 +1,22 @@
 diff --git a/app/src/main/kotlin/org/fossify/phone/activities/MainActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/MainActivity.kt
-index 75f340ca..469fc334 100644
+index 75f340ca..11402737 100644
 --- a/app/src/main/kotlin/org/fossify/phone/activities/MainActivity.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/activities/MainActivity.kt
-@@ -37,7 +37,6 @@ import org.fossify.phone.extensions.config
+@@ -5,11 +5,13 @@ import android.app.Activity
+ import android.content.Intent
+ import android.content.pm.ShortcutInfo
+ import android.content.res.Configuration
++import android.database.ContentObserver
+ import android.graphics.drawable.Drawable
+ import android.graphics.drawable.Icon
+ import android.graphics.drawable.LayerDrawable
+ import android.os.Bundle
+ import android.os.Handler
++import android.provider.ContactsContract
+ import android.provider.Settings
+ import android.widget.ImageView
+ import android.widget.TextView
+@@ -37,7 +39,6 @@ import org.fossify.phone.extensions.config
  import org.fossify.phone.extensions.handleFullScreenNotificationsPermission
  import org.fossify.phone.extensions.launchCreateNewContactIntent
  import org.fossify.phone.fragments.ContactsFragment
@@ -10,7 +24,31 @@ index 75f340ca..469fc334 100644
  import org.fossify.phone.fragments.MyViewPagerFragment
  import org.fossify.phone.fragments.RecentsFragment
  import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
-@@ -129,7 +128,6 @@ class MainActivity : SimpleActivity() {
+@@ -58,6 +59,12 @@ class MainActivity : SimpleActivity() {
+     private var storedFontSize = 0
+     private var storedStartNameWithSurname = false
+     var cachedContacts = ArrayList<Contact>()
++    private val contactsContentObserver = object : ContentObserver(Handler()) {
++        override fun onChange(selfChange: Boolean) {
++            super.onChange(selfChange)
++            getContactsFragment()?.refreshItems()
++        }
++    }
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+@@ -70,6 +77,10 @@ class MainActivity : SimpleActivity() {
+         EventBus.getDefault().register(this)
+         launchedDialer = savedInstanceState?.getBoolean(OPEN_DIAL_PAD_AT_LAUNCH) ?: false
+ 
++        if (hasPermission(org.fossify.commons.helpers.PERMISSION_READ_CONTACTS)) {
++            contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactsContentObserver)
++        }
++
+         if (isDefaultDialer()) {
+             checkContactPermissions()
+ 
+@@ -129,7 +140,6 @@ class MainActivity : SimpleActivity() {
          val configStartNameWithSurname = config.startNameWithSurname
          if (storedStartNameWithSurname != configStartNameWithSurname) {
              getContactsFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
@@ -18,7 +56,23 @@ index 75f340ca..469fc334 100644
              storedStartNameWithSurname = config.startNameWithSurname
          }
  
-@@ -200,8 +198,8 @@ class MainActivity : SimpleActivity() {
+@@ -147,6 +157,7 @@ class MainActivity : SimpleActivity() {
+         checkShortcuts()
+         Handler().postDelayed({
+             getRecentsFragment()?.refreshItems()
++            getContactsFragment()?.refreshItems()
+         }, 2000)
+     }
+ 
+@@ -190,6 +201,7 @@ class MainActivity : SimpleActivity() {
+ 
+     override fun onDestroy() {
+         super.onDestroy()
++        contentResolver.unregisterContentObserver(contactsContentObserver)
+         EventBus.getDefault().unregister(this)
+     }
+ 
+@@ -200,8 +212,8 @@ class MainActivity : SimpleActivity() {
              findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
              findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment()
              findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
@@ -29,7 +83,7 @@ index 75f340ca..469fc334 100644
              findItem(R.id.more_apps_from_us).isVisible = !resources.getBoolean(R.bool.hide_google_relations)
          }
      }
-@@ -226,7 +224,7 @@ class MainActivity : SimpleActivity() {
+@@ -226,7 +238,7 @@ class MainActivity : SimpleActivity() {
                  when (menuItem.itemId) {
                      R.id.clear_call_history -> clearCallHistory()
                      R.id.create_new_contact -> launchCreateNewContactIntent()
@@ -38,7 +92,7 @@ index 75f340ca..469fc334 100644
                      R.id.filter -> showFilterDialog()
                      R.id.more_apps_from_us -> launchMoreAppsFromUsIntent()
                      R.id.settings -> launchSettings()
-@@ -251,7 +249,7 @@ class MainActivity : SimpleActivity() {
+@@ -251,7 +263,7 @@ class MainActivity : SimpleActivity() {
              val newColumnCount = it as Int
              if (currentColumnCount != newColumnCount) {
                  config.contactsGridColumnCount = newColumnCount
@@ -47,7 +101,7 @@ index 75f340ca..469fc334 100644
              }
          }
      }
-@@ -259,7 +257,8 @@ class MainActivity : SimpleActivity() {
+@@ -259,7 +271,8 @@ class MainActivity : SimpleActivity() {
      private fun changeViewType() {
          ChangeViewTypeDialog(this) {
              refreshMenuItems()
@@ -57,7 +111,7 @@ index 75f340ca..469fc334 100644
          }
      }
  
-@@ -338,10 +337,6 @@ class MainActivity : SimpleActivity() {
+@@ -338,10 +351,6 @@ class MainActivity : SimpleActivity() {
              icons.add(R.drawable.ic_person_vector)
          }
  
@@ -68,7 +122,7 @@ index 75f340ca..469fc334 100644
          if (showTabs and TAB_CALL_HISTORY != 0) {
              icons.add(R.drawable.ic_clock_filled_vector)
          }
-@@ -357,10 +352,6 @@ class MainActivity : SimpleActivity() {
+@@ -357,10 +366,6 @@ class MainActivity : SimpleActivity() {
              icons.add(R.drawable.ic_person_outline_vector)
          }
  
@@ -79,7 +133,7 @@ index 75f340ca..469fc334 100644
          if (showTabs and TAB_CALL_HISTORY != 0) {
              icons.add(R.drawable.ic_clock_vector)
          }
-@@ -448,10 +439,12 @@ class MainActivity : SimpleActivity() {
+@@ -448,10 +453,12 @@ class MainActivity : SimpleActivity() {
          storedStartNameWithSurname = config.startNameWithSurname
      }
  
@@ -95,7 +149,7 @@ index 75f340ca..469fc334 100644
              else -> R.drawable.ic_clock_vector
          }
  
-@@ -459,9 +452,8 @@ class MainActivity : SimpleActivity() {
+@@ -459,9 +466,8 @@ class MainActivity : SimpleActivity() {
      }
  
      private fun getTabLabel(position: Int): String {
@@ -107,7 +161,7 @@ index 75f340ca..469fc334 100644
              else -> R.string.call_history_tab
          }
  
-@@ -476,7 +468,8 @@ class MainActivity : SimpleActivity() {
+@@ -476,7 +482,8 @@ class MainActivity : SimpleActivity() {
          binding.apply {
              if (viewPager.adapter == null) {
                  viewPager.adapter = ViewPagerAdapter(this@MainActivity)
@@ -117,7 +171,7 @@ index 75f340ca..469fc334 100644
                  viewPager.onGlobalLayout {
                      refreshFragments()
                  }
-@@ -495,7 +488,6 @@ class MainActivity : SimpleActivity() {
+@@ -495,7 +502,6 @@ class MainActivity : SimpleActivity() {
      fun refreshFragments() {
          cacheContacts()
          getContactsFragment()?.refreshItems()
@@ -125,7 +179,7 @@ index 75f340ca..469fc334 100644
          getRecentsFragment()?.refreshItems()
      }
  
-@@ -507,10 +499,6 @@ class MainActivity : SimpleActivity() {
+@@ -507,10 +513,6 @@ class MainActivity : SimpleActivity() {
              fragments.add(getContactsFragment())
          }
  
@@ -136,7 +190,7 @@ index 75f340ca..469fc334 100644
          if (showTabs and TAB_CALL_HISTORY > 0) {
              fragments.add(getRecentsFragment())
          }
-@@ -522,34 +510,20 @@ class MainActivity : SimpleActivity() {
+@@ -522,34 +524,20 @@ class MainActivity : SimpleActivity() {
  
      private fun getContactsFragment(): ContactsFragment? = findViewById(R.id.contacts_fragment)
  
@@ -179,7 +233,7 @@ index 75f340ca..469fc334 100644
              }
          }
      }
-@@ -579,12 +553,6 @@ class MainActivity : SimpleActivity() {
+@@ -579,12 +567,6 @@ class MainActivity : SimpleActivity() {
  
      private fun showSortingDialog(showCustomSorting: Boolean) {
          ChangeSortingDialog(this, showCustomSorting) {
@@ -192,7 +246,7 @@ index 75f340ca..469fc334 100644
              getContactsFragment()?.refreshItems {
                  if (binding.mainMenu.isSearchOpen) {
                      getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-@@ -595,12 +563,6 @@ class MainActivity : SimpleActivity() {
+@@ -595,12 +577,6 @@ class MainActivity : SimpleActivity() {
  
      private fun showFilterDialog() {
          FilterContactSourcesDialog(this) {
