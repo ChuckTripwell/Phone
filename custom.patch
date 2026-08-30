@@ -206,7 +206,7 @@ index 75f340ca..469fc334 100644
                  if (binding.mainMenu.isSearchOpen) {
                      getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
-index fb6827ce..cf2f7ccd 100644
+index fb6827ce..269b56b8 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 @@ -3,6 +3,7 @@ package org.fossify.phone.adapters
@@ -412,7 +412,7 @@ index fb6827ce..cf2f7ccd 100644
                      applyColorFilter(textColor)
                      setOnTouchListener { _, event ->
                          if (event.action == MotionEvent.ACTION_DOWN) {
-@@ -427,27 +490,136 @@ class ContactsAdapter(
+@@ -427,27 +490,138 @@ class ContactsAdapter(
                  }
              } else {
                  dragHandleIcon.apply {
@@ -462,6 +462,8 @@ index fb6827ce..cf2f7ccd 100644
 +                        if (Math.abs(dx) > swipeTouchSlop && Math.abs(dx) > Math.abs(dy)) {
 +                            swipeWasDragging = true
 +                            v.parent?.requestDisallowInterceptTouchEvent(true)
++                            // unpress the row so any pending long-press stops firing while we drag
++                            v.isPressed = false
 +                        } else {
 +                            return@setOnTouchListener false
 +                        }
@@ -552,7 +554,7 @@ index fb6827ce..cf2f7ccd 100644
              }
          }
  
-@@ -498,21 +670,21 @@ class ContactsAdapter(
+@@ -498,21 +672,21 @@ class ContactsAdapter(
  
          data object ItemContactGrid : Binding {
              override fun inflate(layoutInflater: LayoutInflater, viewGroup: ViewGroup, attachToRoot: Boolean): ItemViewBinding {
@@ -578,7 +580,7 @@ index fb6827ce..cf2f7ccd 100644
              }
          }
      }
-@@ -522,22 +694,25 @@ class ContactsAdapter(
+@@ -522,22 +696,25 @@ class ContactsAdapter(
          val itemContactImage: ImageView
          val itemContactFrame: ConstraintLayout
          val dragHandleIcon: ImageView
