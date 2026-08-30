@@ -5,11 +5,13 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.res.Configuration
+import android.database.ContentObserver
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.Handler
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.widget.ImageView
 import android.widget.TextView
@@ -57,6 +59,12 @@ class MainActivity : SimpleActivity() {
     private var storedFontSize = 0
     private var storedStartNameWithSurname = false
     var cachedContacts = ArrayList<Contact>()
+    private val contactsContentObserver = object : ContentObserver(Handler()) {
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            getContactsFragment()?.refreshItems()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +76,10 @@ class MainActivity : SimpleActivity() {
 
         EventBus.getDefault().register(this)
         launchedDialer = savedInstanceState?.getBoolean(OPEN_DIAL_PAD_AT_LAUNCH) ?: false
+
+        if (hasPermission(org.fossify.commons.helpers.PERMISSION_READ_CONTACTS)) {
+            contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactsContentObserver)
+        }
 
         if (isDefaultDialer()) {
             checkContactPermissions()
@@ -145,6 +157,7 @@ class MainActivity : SimpleActivity() {
         checkShortcuts()
         Handler().postDelayed({
             getRecentsFragment()?.refreshItems()
+            getContactsFragment()?.refreshItems()
         }, 2000)
     }
 
@@ -188,6 +201,7 @@ class MainActivity : SimpleActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        contentResolver.unregisterContentObserver(contactsContentObserver)
         EventBus.getDefault().unregister(this)
     }
 
