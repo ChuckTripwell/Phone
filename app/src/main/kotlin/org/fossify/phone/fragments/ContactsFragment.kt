@@ -230,7 +230,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     private fun setupLetterFastScroller(contacts: ArrayList<Contact>) {
-        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, favoriteCount = favoriteCount)
+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = true, favoriteCount = favoriteCount)
     }
 
     override fun onSearchClosed() {
@@ -271,7 +271,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
         binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
         (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText, 0)
-        setupLetterFastScroller(filtered)
+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, filtered, useStarForFavorites = false, favoriteCount = 0)
     }
 
     private fun requestReadContactsPermission() {
