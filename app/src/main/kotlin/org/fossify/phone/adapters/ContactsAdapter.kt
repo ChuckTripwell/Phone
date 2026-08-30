@@ -3,6 +3,7 @@ package org.fossify.phone.adapters
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ShortcutInfo
+import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.text.TextUtils
@@ -33,6 +34,7 @@ import org.fossify.phone.databinding.ItemContactStarGridBinding
 import org.fossify.phone.extensions.areMultipleSIMsAvailable
 import org.fossify.phone.extensions.callContactWithSim
 import org.fossify.phone.extensions.config
+import org.fossify.phone.extensions.startCallWithConfirmationCheck
 import org.fossify.phone.extensions.startContactDetailsIntent
 import org.fossify.phone.interfaces.RefreshItemsListener
 import java.util.Collections
@@ -49,6 +51,7 @@ class ContactsAdapter(
     private val showDeleteButton: Boolean = true,
     private val enableDrag: Boolean = false,
     private val allowLongClick: Boolean = true,
+    private val enableSwipeActions: Boolean = false,
     var favoriteCount: Int = 0,
     itemClick: (Any) -> Unit,
     val profileIconClick: ((Any) -> Unit)? = null
@@ -61,6 +64,16 @@ class ContactsAdapter(
     private var startReorderDragListener: StartReorderDragListener? = null
     var onDragEndListener: (() -> Unit)? = null
     var onSpanCountListener: (Int) -> Unit = {}
+
+    // swipe-to-call / swipe-to-sms gesture state
+    private val swipeTouchSlop = ViewConfiguration.get(activity).scaledTouchSlop
+    private val swipeIndicatorThreshold = 80f * resources.displayMetrics.density
+    private val swipeActionThreshold = 140f * resources.displayMetrics.density
+    private val swipeCallColor = Color.argb(150, 76, 175, 80)
+    private val swipeSmsColor = Color.argb(150, 33, 150, 243)
+    private var swipeStartX = 0f
+    private var swipeStartY = 0f
+    private var swipeWasDragging = false
 
     // whether a separator row is shown after the favorite block
     private fun hasSeparator() = favoriteCount > 0
@@ -409,6 +422,7 @@ class ContactsAdapter(
     private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
         binding.apply {
             root.setupViewBackground(activity)
+            root.translationX = 0f
             itemContactFrame.isSelected = selectedKeys.contains(contact.rawId)
 
             itemContactImage.apply {
@@ -485,9 +499,103 @@ class ContactsAdapter(
                 }
             }
 
+            setupSwipeActions(binding, contact)
+
             if (!activity.isDestroyed) {
                 SimpleContactsHelper(root.context).loadContactImage(contact.photoUri, itemContactImage, contact.getNameToDisplay())
             }
+        }
+    }
+
+    // lets the user swipe a contact row sideways to quickly call (right, green) or SMS (left, blue) it
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupSwipeActions(binding: ItemViewBinding, contact: Contact) {
+        val view = binding.root
+        if (!enableSwipeActions || viewType == VIEW_TYPE_GRID) {
+            view.setOnTouchListener(null)
+            return
+        }
+
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    swipeStartX = event.rawX
+                    swipeStartY = event.rawY
+                    swipeWasDragging = false
+                    false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (actModeCallback.isSelectable) {
+                        return@setOnTouchListener false
+                    }
+                    val dx = event.rawX - swipeStartX
+                    val dy = event.rawY - swipeStartY
+                    if (!swipeWasDragging) {
+                        if (Math.abs(dx) > swipeTouchSlop && Math.abs(dx) > Math.abs(dy)) {
+                            swipeWasDragging = true
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        } else {
+                            return@setOnTouchListener false
+                        }
+                    }
+
+                    v.translationX = dx
+                    v.setBackgroundColor(
+                        when {
+                            dx > swipeIndicatorThreshold -> swipeCallColor
+                            dx < -swipeIndicatorThreshold -> swipeSmsColor
+                            else -> Color.TRANSPARENT
+                        }
+                    )
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (swipeWasDragging) {
+                        val dx = event.rawX - swipeStartX
+                        if (dx > swipeActionThreshold) {
+                            performSwipeCall(contact)
+                        } else if (dx < -swipeActionThreshold) {
+                            performSwipeSms(contact)
+                        }
+                        resetSwipeState(v)
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    if (swipeWasDragging) {
+                        resetSwipeState(v)
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun resetSwipeState(view: View) {
+        view.animate().translationX(0f).setDuration(150).withEndAction {
+            view.setBackgroundColor(Color.TRANSPARENT)
+            view.setupViewBackground(activity)
+        }.start()
+        swipeWasDragging = false
+    }
+
+    private fun performSwipeCall(contact: Contact) {
+        (activity as SimpleActivity).startCallWithConfirmationCheck(contact)
+    }
+
+    private fun performSwipeSms(contact: Contact) {
+        val number = contact.getPrimaryNumber()
+        if (!number.isNullOrEmpty()) {
+            activity.launchSendSMSIntent(number)
         }
     }
 

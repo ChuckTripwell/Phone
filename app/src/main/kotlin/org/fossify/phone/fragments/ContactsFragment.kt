@@ -144,6 +144,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                     refreshItemsListener = this,
                     showDeleteButton = true,
                     enableDrag = favoriteCount > 0,
+                    enableSwipeActions = true,
                     viewType = activity!!.config.viewType,
                     favoriteCount = favoriteCount,
                     itemClick = {

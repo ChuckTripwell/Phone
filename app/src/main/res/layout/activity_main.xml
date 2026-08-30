@@ -18,7 +18,7 @@
         android:scrollbars="none"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <org.fossify.commons.views.MyViewPager
+        <org.fossify.phone.views.SwipeLockedViewPager
             android:id="@+id/view_pager"
             android:layout_width="match_parent"
             android:layout_height="0dp"
