@@ -572,7 +572,7 @@ index 57c5412c..912375ff 100644
 +        cp in 0xFE00..0xFE0F || cp in 0xFE20..0xFE2F // variation selectors
 +}
 diff --git a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
-index 9a26a05f..7800cbad 100644
+index 9a26a05f..cc36a23c 100644
 --- a/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/fragments/ContactsFragment.kt
 @@ -2,6 +2,7 @@ package org.fossify.phone.fragments
@@ -729,7 +729,7 @@ index 9a26a05f..7800cbad 100644
 +
      private fun setupLetterFastScroller(contacts: ArrayList<Contact>) {
 -        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts)
-+        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, favoriteCount = favoriteCount)
++        binding.letterFastscroller.setupWithContacts(binding.fragmentList, contacts, useStarForFavorites = true, favoriteCount = favoriteCount)
      }
  
      override fun onSearchClosed() {
@@ -754,15 +754,17 @@ index 9a26a05f..7800cbad 100644
          val shouldNormalize = fixedText.normalizeString() == fixedText
          val filtered = allContacts.filter { contact ->
              getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
-@@ -178,7 +270,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
+@@ -178,8 +270,8 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
          }
  
          binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
 -        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText)
+-        setupLetterFastScroller(filtered)
 +        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText, 0)
-         setupLetterFastScroller(filtered)
++        binding.letterFastscroller.setupWithContacts(binding.fragmentList, filtered, useStarForFavorites = false, favoriteCount = 0)
      }
  
+     private fun requestReadContactsPermission() {
 @@ -189,7 +281,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                  binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
                  ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
