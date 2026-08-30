@@ -260,7 +260,7 @@ index 75f340ca..11402737 100644
                  if (binding.mainMenu.isSearchOpen) {
                      getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
-index fb6827ce..269b56b8 100644
+index fb6827ce..c980be31 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/ContactsAdapter.kt
 @@ -3,6 +3,7 @@ package org.fossify.phone.adapters
@@ -344,7 +344,36 @@ index fb6827ce..269b56b8 100644
  
      init {
          setupDragListener(true)
-@@ -122,11 +157,17 @@ class ContactsAdapter(
+@@ -96,6 +131,20 @@ class ContactsAdapter(
+             findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected && isOreoPlus()
+             findItem(R.id.cab_view_details).isVisible = isOneItemSelected
+             findItem(R.id.cab_block_unblock_contact).isVisible = isOneItemSelected && isNougatPlus()
++
++            val selectedFavorites = getSelectedItems().count { it.starred == 1 }
++            val allFavorites = selectedFavorites > 0 && selectedFavorites == selectedKeys.size
++            findItem(R.id.cab_favorite).apply {
++                isVisible = isOneItemSelected
++                if (allFavorites) {
++                    setIcon(R.drawable.ic_star_outline_vector)
++                    setTitle(R.string.remove_from_favorites)
++                } else {
++                    setIcon(R.drawable.ic_star_vector)
++                    setTitle(R.string.add_to_favorites)
++                }
++            }
++
+             getCabBlockContactTitle { title ->
+                 findItem(R.id.cab_block_unblock_contact).title = title
+             }
+@@ -115,6 +164,7 @@ class ContactsAdapter(
+             R.id.cab_delete -> askConfirmDelete()
+             R.id.cab_send_sms -> sendSMS()
+             R.id.cab_view_details -> viewContactDetails()
++            R.id.cab_favorite -> toggleFavoritesForSelected()
+             R.id.cab_create_shortcut -> tryCreateShortcut()
+             R.id.cab_select_all -> selectAll()
+         }
+@@ -122,11 +172,17 @@ class ContactsAdapter(
  
      override fun getSelectableItemCount() = contacts.size
  
@@ -365,7 +394,7 @@ index fb6827ce..269b56b8 100644
  
      @SuppressLint("NotifyDataSetChanged")
      override fun onActionModeCreated() {
-@@ -139,24 +180,35 @@ class ContactsAdapter(
+@@ -139,24 +195,35 @@ class ContactsAdapter(
      }
  
      override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -406,7 +435,7 @@ index fb6827ce..269b56b8 100644
  
      private fun getCabBlockContactTitle(callback: (String) -> Unit) {
          val contact = getSelectedItems().firstOrNull() ?: return callback("")
-@@ -224,9 +276,10 @@ class ContactsAdapter(
+@@ -224,9 +291,10 @@ class ContactsAdapter(
      }
  
      @SuppressLint("NotifyDataSetChanged")
@@ -419,7 +448,7 @@ index fb6827ce..269b56b8 100644
              textToHighlight = highlightText
              notifyDataSetChanged()
              finishActMode()
-@@ -296,6 +349,9 @@ class ContactsAdapter(
+@@ -296,6 +364,9 @@ class ContactsAdapter(
          val contactsToRemove = getSelectedItems()
          val positions = getSelectedItemPositions()
          contacts.removeAll(contactsToRemove)
@@ -429,7 +458,37 @@ index fb6827ce..269b56b8 100644
          val idsToRemove = contactsToRemove.map { it.rawId }.toMutableList() as ArrayList<Int>
  
          SimpleContactsHelper(activity).deleteContactRawIDs(idsToRemove) {
-@@ -352,6 +408,9 @@ class ContactsAdapter(
+@@ -312,6 +383,29 @@ class ContactsAdapter(
+ 
+     private fun getSelectedItems() = contacts.filter { selectedKeys.contains(it.rawId) } as ArrayList<Contact>
+ 
++    private fun toggleFavoritesForSelected() {
++        val selectedItems = getSelectedItems()
++        if (selectedItems.isEmpty()) {
++            return
++        }
++
++        val addAll = selectedItems.any { it.starred != 1 }
++
++        activity.handlePermission(PERMISSION_WRITE_CONTACTS) {
++            val helper = ContactsHelper(activity)
++            if (addAll) {
++                helper.addFavorites(selectedItems)
++            } else {
++                helper.removeFavorites(selectedItems)
++            }
++
++            activity.runOnUiThread {
++                finishActMode()
++                refreshItemsListener?.refreshItems()
++            }
++        }
++    }
++
+     private fun getSelectedPhoneNumber(): String? {
+         return getSelectedItems().firstOrNull()?.getPrimaryNumber()
+     }
+@@ -352,6 +446,9 @@ class ContactsAdapter(
  
      override fun onViewRecycled(holder: ViewHolder) {
          super.onViewRecycled(holder)
@@ -439,7 +498,7 @@ index fb6827ce..269b56b8 100644
          if (!activity.isDestroyed && !activity.isFinishing) {
              Binding.getByItemViewType(holder.itemViewType).bind(holder.itemView).apply {
                  Glide.with(activity).clear(itemContactImage)
-@@ -363,6 +422,7 @@ class ContactsAdapter(
+@@ -363,6 +460,7 @@ class ContactsAdapter(
      private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
          binding.apply {
              root.setupViewBackground(activity)
@@ -447,7 +506,7 @@ index fb6827ce..269b56b8 100644
              itemContactFrame.isSelected = selectedKeys.contains(contact.rawId)
  
              itemContactImage.apply {
-@@ -383,6 +443,8 @@ class ContactsAdapter(
+@@ -383,6 +481,8 @@ class ContactsAdapter(
                  }
              }
  
@@ -456,7 +515,7 @@ index fb6827ce..269b56b8 100644
              itemContactName.apply {
                  setTextColor(textColor)
                  setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
-@@ -416,7 +478,8 @@ class ContactsAdapter(
+@@ -416,7 +516,8 @@ class ContactsAdapter(
  
              if (enableDrag && textToHighlight.isEmpty()) {
                  dragHandleIcon.apply {
@@ -466,7 +525,7 @@ index fb6827ce..269b56b8 100644
                      applyColorFilter(textColor)
                      setOnTouchListener { _, event ->
                          if (event.action == MotionEvent.ACTION_DOWN) {
-@@ -427,27 +490,138 @@ class ContactsAdapter(
+@@ -427,27 +528,138 @@ class ContactsAdapter(
                  }
              } else {
                  dragHandleIcon.apply {
@@ -608,7 +667,7 @@ index fb6827ce..269b56b8 100644
              }
          }
  
-@@ -498,21 +672,21 @@ class ContactsAdapter(
+@@ -498,21 +710,21 @@ class ContactsAdapter(
  
          data object ItemContactGrid : Binding {
              override fun inflate(layoutInflater: LayoutInflater, viewGroup: ViewGroup, attachToRoot: Boolean): ItemViewBinding {
@@ -634,7 +693,7 @@ index fb6827ce..269b56b8 100644
              }
          }
      }
-@@ -522,22 +696,25 @@ class ContactsAdapter(
+@@ -522,22 +734,25 @@ class ContactsAdapter(
          val itemContactImage: ImageView
          val itemContactFrame: ConstraintLayout
          val dragHandleIcon: ImageView
@@ -1242,6 +1301,22 @@ index 00000000..e8eca244
 +        app:layout_constraintTop_toTopOf="parent" />
 +
 +</androidx.constraintlayout.widget.ConstraintLayout>
+diff --git a/app/src/main/res/menu/cab_contacts.xml b/app/src/main/res/menu/cab_contacts.xml
+index 56ebf532..f71886d9 100644
+--- a/app/src/main/res/menu/cab_contacts.xml
++++ b/app/src/main/res/menu/cab_contacts.xml
+@@ -36,6 +36,11 @@
+         android:icon="@drawable/ic_minus_circle_vector"
+         android:title="@string/block_contact"
+         app:showAsAction="ifRoom" />
++    <item
++        android:id="@+id/cab_favorite"
++        android:icon="@drawable/ic_star_vector"
++        android:title="@string/add_to_favorites"
++        app:showAsAction="ifRoom" />
+     <item
+         android:id="@+id/cab_create_shortcut"
+         android:showAsAction="never"
 diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
 index dacf1a28..cadffbf5 100644
 --- a/app/src/main/res/values/dimens.xml
