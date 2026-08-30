@@ -535,6 +535,8 @@ class ContactsAdapter(
                         if (Math.abs(dx) > swipeTouchSlop && Math.abs(dx) > Math.abs(dy)) {
                             swipeWasDragging = true
                             v.parent?.requestDisallowInterceptTouchEvent(true)
+                            // unpress the row so any pending long-press stops firing while we drag
+                            v.isPressed = false
                         } else {
                             return@setOnTouchListener false
                         }
