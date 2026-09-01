@@ -53,7 +53,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/fossifyorg/Phone.git
           git fetch upstream
-          git checkout main
+          git checkout --track origin/main || git checkout -f origin/main
           git reset --hard upstream/main
           git push --force origin main
           echo "main synced to upstream/main: $(git rev-parse --short upstream/main)"
@@ -81,7 +81,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/fossifyorg/Phone.git
           git fetch upstream
-          git checkout main
+          git checkout --track origin/main || git checkout -f origin/main
           git reset --hard upstream/main
 
       - name: Apply raw custom patch onto main
