@@ -3,13 +3,64 @@ name: Build and Release Custom Patch APK
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 */6 * * *'
   push:
     branches:
       - custom-patch
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Checkout custom-patch (holds workflow + raw patch)
+        uses: actions/checkout@v4
+        with:
+          ref: custom-patch
+          fetch-depth: 0
+
+      - name: Check for upstream update
+        id: check
+        run: |
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            git remote add upstream https://github.com/fossifyorg/Phone.git
+            git fetch upstream
+            UPSTREAM_SHA=$(git rev-parse upstream/main)
+            ORIGIN_SHA=$(git rev-parse origin/main)
+            echo "upstream=$UPSTREAM_SHA origin/main=$ORIGIN_SHA"
+            if [ "$UPSTREAM_SHA" = "$ORIGIN_SHA" ]; then
+              echo "No upstream update since last sync - skipping build"
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  sync-main:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout custom-patch (holds workflow + raw patch)
+        uses: actions/checkout@v4
+        with:
+          ref: custom-patch
+          fetch-depth: 0
+
+      - name: Sync main with upstream fossifyorg/Phone
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/fossifyorg/Phone.git
+          git fetch upstream
+          git checkout main
+          git reset --hard upstream/main
+          git push --force origin main
+          echo "main synced to upstream/main: $(git rev-parse --short upstream/main)"
+
   build-and-release:
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,13 +75,14 @@ jobs:
       - name: Stash raw patch (lives on custom-patch branch)
         run: cp custom.patch $RUNNER_TEMP/custom.patch
 
-      - name: Update main from upstream (overwrite any local changes)
+      - name: Sync main with upstream fossifyorg/Phone
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin
+          git remote add upstream https://github.com/fossifyorg/Phone.git
+          git fetch upstream
           git checkout main
-          git reset --hard origin/main
+          git reset --hard upstream/main
 
       - name: Apply raw custom patch onto main
         run: |
@@ -74,19 +126,6 @@ jobs:
         run: |
           APK_PATH=$(find app/build/outputs/apk/foss/release -name "*.apk" | head -1)
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
-
-      - name: Clean up old custom-patch releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RELEASES=$(gh release list --limit 100 --json tagName,isDraft,isPrerelease \
-            --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName')
-          for TAG in $RELEASES; do
-            if [[ "$TAG" == v${{ steps.version.outputs.version_name }}-* ]]; then
-              echo "Deleting old release $TAG"
-              gh release delete "$TAG" --yes --cleanup-tag || true
-            fi
-          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
