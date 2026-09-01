@@ -75,10 +75,23 @@ jobs:
           APK_PATH=$(find app/build/outputs/apk/foss/release -name "*.apk" | head -1)
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
 
+      - name: Clean up old custom-patch releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASES=$(gh release list --limit 100 --json tagName,isDraft,isPrerelease \
+            --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName')
+          for TAG in $RELEASES; do
+            if [[ "$TAG" == v${{ steps.version.outputs.version_name }}-* ]]; then
+              echo "Deleting old release $TAG"
+              gh release delete "$TAG" --yes --cleanup-tag || true
+            fi
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}
+          tag_name: v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}-${{ github.run_number }}
           name: "Custom Patch v${{ steps.version.outputs.version_name }}"
           body: |
             ## Custom Patch Release
